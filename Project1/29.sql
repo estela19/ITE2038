@@ -1,5 +1,5 @@
 #29
-SELECT COUNT(nickname)
+SELECT COUNT(CatchedPokemon.id)
 FROM CatchedPokemon, Pokemon
 WHERE pid = Pokemon.id
 GROUP BY type
