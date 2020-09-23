@@ -1,5 +1,5 @@
 #36
-SELECT Trainer.name, Pokemon.name
+SELECT Trainer.name
 FROM Trainer, CatchedPokemon, Pokemon, Evolution
 WHERE Trainer.id = owner_id
   AND pid = Pokemon.id
