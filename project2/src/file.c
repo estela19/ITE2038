@@ -11,6 +11,12 @@
 #define true 1
 #define false 0
 
+int open_file(char* pathname) {
+    fd = open(pathname, O_RDWR | O_SYNC | O_CREAT, 0777);
+    if (fd < 0) return -1;
+    return 0;
+}
+
 pagenum_t file_alloc_page() {
     pagenum_t* fnum = headerManager.header.free_pnum;
     if (*fnum == 0) {

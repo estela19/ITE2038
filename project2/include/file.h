@@ -62,6 +62,10 @@ typedef struct HeaderManager_ {
 
 extern HeaderManager headerManager;
 
+int fd;
+
+int open_file(char* pathname);
+
 pagenum_t file_alloc_page();
 
 void file_free_page(pagenum_t pagenum);
