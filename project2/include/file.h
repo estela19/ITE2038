@@ -1,3 +1,5 @@
+#include<stdint.h>
+
 typedef uint64_t pagenum_t;
 
 typedef struct Record_ {
@@ -28,7 +30,7 @@ typedef struct Internal_ {
     pagenum_t parent_pnum;
     int isLeaf;
     int numkeys;
-    pagenum_t first_pnum;
+    pagenum_t more_pnum;
     Precord precord[248];
 }Internal;
 
@@ -47,7 +49,6 @@ typedef struct Page_t_ {
     Page page;
 }Page_t;
 
-Page_t page_t;
 
 typedef struct HeaderManager_ {
     Header header;
