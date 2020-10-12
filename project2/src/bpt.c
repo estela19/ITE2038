@@ -560,71 +560,70 @@ Node_t * insert_into_leaf( Node_t * leaf, int key, Record * pointer ) {
  * the tree's order, causing the leaf to be split
  * in half.
  */
-node * insert_into_leaf_after_splitting(node * root, node * leaf, int key, record * pointer) {
+Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key, Record * pointer) {
 
-    node * new_leaf;
-    int * temp_keys;
-    void ** temp_pointers;
-    int insertion_index, split, new_key, i, j;
+    Node_t * new_leaf;
+    Record* temp_record;
+    int insertion_index, split, i, j;
+    Precord* new_precord;
 
     new_leaf = make_leaf();
 
-    temp_keys = malloc( order * sizeof(int) );
-    if (temp_keys == NULL) {
-        perror("Temporary keys array.");
+    temp_record = malloc((order + 1) * sizeof(Record));
+    if (temp_record == NULL) {
+        perror("Temporary record array.");
         exit(EXIT_FAILURE);
     }
 
-    temp_pointers = malloc( order * sizeof(void *) );
-    if (temp_pointers == NULL) {
-        perror("Temporary pointers array.");
+    new_precord = malloc(sizeof(Precord));
+    if (new_precord = NULL) {
+        perror("new preocrd.");
         exit(EXIT_FAILURE);
     }
 
     insertion_index = 0;
-    while (insertion_index < order - 1 && leaf->keys[insertion_index] < key)
+    while (insertion_index < order && leaf->page.page.leaf.record[insertion_index].key < key)
         insertion_index++;
 
-    for (i = 0, j = 0; i < leaf->num_keys; i++, j++) {
+    for (i = 0, j = 0; i < leaf->page.page.leaf.num_keys; i++, j++) {
         if (j == insertion_index) j++;
-        temp_keys[j] = leaf->keys[i];
-        temp_pointers[j] = leaf->pointers[i];
+        temp_record[j] = leaf->page.page.leaf.record[i];
     }
 
-    temp_keys[insertion_index] = key;
-    temp_pointers[insertion_index] = pointer;
+    temp_record[insertion_index] = pointer;
 
     leaf->num_keys = 0;
 
-    split = cut(order - 1);
+    split = cut(order);
 
     for (i = 0; i < split; i++) {
-        leaf->pointers[i] = temp_pointers[i];
-        leaf->keys[i] = temp_keys[i];
+        leaf->page.page.leaf.record[i] = temp_record[i];
         leaf->num_keys++;
     }
 
     for (i = split, j = 0; i < order; i++, j++) {
-        new_leaf->pointers[j] = temp_pointers[i];
-        new_leaf->keys[j] = temp_keys[i];
+        new_leaf->page.page.leaf.record[j] = temp_record[i];
         new_leaf->num_keys++;
     }
 
-    free(temp_pointers);
-    free(temp_keys);
+    free(temp_reord);
 
-    new_leaf->pointers[order - 1] = leaf->pointers[order - 1];
-    leaf->pointers[order - 1] = new_leaf;
+    new_leaf->page.page.leaf.rsib_pnum = leaf->page.page.leaf.rsib_pnum;
+    leaf->page.page.leaf.rsib_pnum = new_leaf->pnum;
 
+    /*
     for (i = leaf->num_keys; i < order - 1; i++)
         leaf->pointers[i] = NULL;
     for (i = new_leaf->num_keys; i < order - 1; i++)
         new_leaf->pointers[i] = NULL;
+    */
 
-    new_leaf->parent = leaf->parent;
-    new_key = new_leaf->keys[0];
+    //만약 부모가 또 split 되는경우?
+    new_leaf->page.page.leaf.parent_pnum = leaf->page.page.leaf.parent_pnum;
+    new_precord->key = new_leaf->page.page.leaf.record[0].key;
+    new_precord->pnum = new_leaf->pnum;
 
-    return insert_into_parent(root, leaf, new_key, new_leaf);
+    return insert_into_parent(root, leaf, new_precord, new_leaf);
 }
 
 
@@ -733,17 +732,17 @@ node * insert_into_node_after_splitting(node * root, node * old_node, int left_i
 /* Inserts a new node (leaf or internal node) into the B+ tree.
  * Returns the root of the tree after insertion.
  */
-node * insert_into_parent(node * root, node * left, int key, node * right) {
+Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, Node_t * right) {
 
     int left_index;
-    node * parent;
+    Node_t * parent;
 
-    parent = left->parent;
+    //parent = left->parent;
 
     /* Case: new root. */
 
-    if (parent == NULL)
-        return insert_into_new_root(left, key, right);
+    if (right->page.page.internal.parent_pnum == 0)
+        return insert_into_new_root(left, new_precord);
 
     /* Case: leaf or node. (Remainder of
      * function body.)  
@@ -774,16 +773,20 @@ node * insert_into_parent(node * root, node * left, int key, node * right) {
  * and inserts the appropriate key into
  * the new root.
  */
-node * insert_into_new_root(node * left, int key, node * right) {
+Node_t * insert_into_new_root(Node_t * left, Precord* key_record) {
 
-    node * root = make_node();
-    root->keys[0] = key;
-    root->pointers[0] = left;
-    root->pointers[1] = right;
-    root->num_keys++;
-    root->parent = NULL;
-    left->parent = root;
-    right->parent = root;
+    Node_t * root = make_node();
+
+    headerManager.header.root_pnum = root->pnum;
+    headerManager.modified = true;
+
+    root->page.page.internal.parent_pnum = 0;
+    root->page.page.internal.more_pnum = left->pnum;
+    root->page.page.internal.precord[0] = key_record;
+    root->page.page.internal.numkeys++;
+
+    file_page_write(root->pnum, root);
+
     return root;
 }
 
