@@ -69,3 +69,5 @@ void file_free_page(pagenum_t pagenum);
 void file_read_page(pagenum_t pagenum, Page_t* dest);
 
 void file_write_page(pagenum_t pagenum, const Page_t* src);
+
+void file_write_header();

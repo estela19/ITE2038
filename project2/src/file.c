@@ -30,7 +30,7 @@ void file_free_page(pagenum_t pagenum) {
     Page_t fpage;
     fpage.page.free.free_pnum = headerManager.header.free_pnum;
     headerManager.header.free_pnum = pagenum;
-    headerManager.sync = 0;
+    headerManager.modified = true;
     int flag = file_write_page(pagenum, &fpage);
     if (flag == -1) {
         printf("free page error");
@@ -51,8 +51,8 @@ void file_write_page(pagenum_t pagenum, const Page_t* src) {
     }
 }
 
-void file_write_header(const Header* src) {
-    int flag = pwrite(fd, src, HSIZE, 0);
+void file_write_header() {
+    int flag = pwrite(fd, &(headerManager.header), HSIZE, 0);
     if (flag == -1) {
         printf("write header error");
     }
