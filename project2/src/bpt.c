@@ -828,7 +828,7 @@ Node_t * start_new_tree( Record * pointer) {
  * however necessary to maintain the B+ tree
  * properties.
  */
-node * insert( Node_t * root, int key, const char* value ) {
+int insert( Node_t * root, int key, const char* value ) {
 
     Record * pointer;
     Node_t * leaf;
@@ -838,7 +838,7 @@ node * insert( Node_t * root, int key, const char* value ) {
      */
 
     if (find(root, key, false) != NULL)
-        return root;
+        return 0;
 
     /* Create a new record for the
      * value.
@@ -850,8 +850,10 @@ node * insert( Node_t * root, int key, const char* value ) {
      * Start a new tree.
      */
 
-    if (root == NULL) 
-        return start_new_tree(pointer);
+    if (root == NULL) {
+        start_new_tree(pointer);
+        return 0;
+    }
 
 
     /* Case: the tree already exists.
@@ -865,14 +867,15 @@ node * insert( Node_t * root, int key, const char* value ) {
 
     if (leaf->page.page.leaf.numkeys < order) {
         leaf = insert_into_leaf(leaf, key, pointer);
-        return root;
+        return 0;
     }
 
 
     /* Case:  leaf must be split.
      */
 
-    return insert_into_leaf_after_splitting(root, leaf, key, pointer);
+    insert_into_leaf_after_splitting(root, leaf, key, pointer);
+    return 0;
 }
 
 
