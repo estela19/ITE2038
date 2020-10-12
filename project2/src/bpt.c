@@ -633,17 +633,18 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
  * into a node into which these can fit
  * without violating the B+ tree properties.
  */
-node * insert_into_node(node * root, node * n, 
-        int left_index, int key, node * right) {
+Node_t * insert_into_node(Node_t * root, Node_t * n, 
+        int left_index, Precord* precord) {
     int i;
 
-    for (i = n->num_keys; i > left_index; i--) {
-        n->pointers[i + 1] = n->pointers[i];
-        n->keys[i] = n->keys[i - 1];
+    for (i = n->page.page.internal.numkeys; i > left_index; i--) {
+        n->page.page.internal.precord[i] = n->page.page.internal.precord[i - 1];
     }
-    n->pointers[left_index + 1] = right;
-    n->keys[left_index] = key;
-    n->num_keys++;
+    n->page.page.internal.precord[left_index] = *precord;
+    n->page.page.internal.numkeys++;
+
+    file_write_page(n->pnum, n);
+
     return root;
 }
 
@@ -739,12 +740,12 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     int left_index;
     Node_t * parent;
 
-    file_write_page(left->pnum, parent);
-
     /* Case: new root. */
 
     if (right->page.page.internal.parent_pnum == 0)
         return insert_into_new_root(left, new_precord);
+
+    file_read_page(left->pnum, &(parent->page));
 
     /* Case: leaf or node. (Remainder of
      * function body.)  
@@ -760,8 +761,8 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     /* Simple case: the new key fits into the node. 
      */
 
-    if (parent->num_keys < order - 1)
-        return insert_into_node(root, parent, left_index, key, right);
+    if (parent->num_keys < inorder)
+        return insert_into_node(root, parent, left_index, new_precord);
 
     /* Harder case:  split a node in order 
      * to preserve the B+ tree properties.
