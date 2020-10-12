@@ -2,6 +2,7 @@
 #include<sys/types.h>
 #include<memory.h>
 #include<string.h>
+#include<fcntl.h>
 
 #include "file.h"
 
@@ -11,10 +12,17 @@
 #define true 1
 #define false 0
 
+#ifdef O_DIRECT
+#define O_DIRECT 00040000
+#endif
+
 int open_file(char* pathname) {
-    fd = open(pathname, O_RDWR | O_SYNC | O_CREAT, 0777);
-    if (fd < 0) return -1;
-    return 0;
+    fd = open(pathname, O_RDWR | O_SYNC | O_DIRECT | O_CREAT, 0777);
+    return fd;
+}
+
+int exist_file(char* pathname) {
+    return access(pathname, F_OK) != -1
 }
 
 pagenum_t file_alloc_page() {
@@ -61,5 +69,12 @@ void file_write_header() {
     int flag = pwrite(fd, &(headerManager.header), HSIZE, 0);
     if (flag == -1) {
         printf("write header error");
+    }
+}
+
+void file_read_header() {
+    int flag = pread(fd, &(headerManager.header), HSIZE, 0);
+    if (flag == -1) {
+        printf("read header error");
     }
 }
