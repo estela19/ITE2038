@@ -477,13 +477,19 @@ Record * make_record(int key, const char* value) {
 /* Creates a new general node, which can be adapted
  * to serve as either a leaf or an internal node.
  */
-node * make_node( void ) {
-    node * new_node;
-    new_node = malloc(sizeof(node));
+Node_t * make_node( void ) {
+    Node_t * new_node;
+    new_node = malloc(sizeof(Node_t));
     if (new_node == NULL) {
         perror("Node creation.");
         exit(EXIT_FAILURE);
     }
+    new_node->page.page.internal.isLeaf = false;
+    new_node->page.page.internal.parent_pnum = -1;
+    new_node->page.page.internal.more_pnum = -1;
+    new_node->pnum = file_alloc_page();
+
+    /*
     new_node->keys = malloc( (order - 1) * sizeof(int) );
     if (new_node->keys == NULL) {
         perror("New node keys array.");
@@ -498,15 +504,16 @@ node * make_node( void ) {
     new_node->num_keys = 0;
     new_node->parent = NULL;
     new_node->next = NULL;
+    */
     return new_node;
 }
 
 /* Creates a new leaf by creating a node
  * and then adapting it appropriately.
  */
-node * make_leaf( void ) {
-    node * leaf = make_node();
-    leaf->is_leaf = true;
+Node_t * make_leaf( void ) {
+    Node_t * leaf = make_node();
+    leaf->page.page.leaf.isLeaf = true;
     return leaf;
 }
 
@@ -528,21 +535,22 @@ int get_left_index(node * parent, node * left) {
  * key into a leaf.
  * Returns the altered leaf.
  */
-node * insert_into_leaf( node * leaf, int key, record * pointer ) {
+Node_t * insert_into_leaf( Node_t * leaf, int key, Record * pointer ) {
 
     int i, insertion_point;
 
     insertion_point = 0;
-    while (insertion_point < leaf->num_keys && leaf->keys[insertion_point] < key)
+    while (insertion_point < leaf->page.page.leaf.numkeys && leaf->page.page.leaf.record[insertion_point].key < key)
         insertion_point++;
 
-    for (i = leaf->num_keys; i > insertion_point; i--) {
-        leaf->keys[i] = leaf->keys[i - 1];
-        leaf->pointers[i] = leaf->pointers[i - 1];
+    for (i = leaf->page.page.leaf.numkeys; i > insertion_point; i--) {
+        leaf->page.page.leaf.record[i] = leaf->page.page.record[i - 1];
     }
-    leaf->keys[insertion_point] = key;
-    leaf->pointers[insertion_point] = pointer;
+    leaf->page.page.leaf.record[insertion_point] = record;
     leaf->num_keys++;
+
+    file_write_page(leaf->pnum, leaf);
+
     return leaf;
 }
 
@@ -784,14 +792,17 @@ node * insert_into_new_root(node * left, int key, node * right) {
 /* First insertion:
  * start a new tree.
  */
-Node_t * start_new_tree(int key, Record * pointer) {
+Node_t * start_new_tree( Record * pointer) {
 
     Node_t * root = make_leaf();
     root->page.page.leaf.parent_pnum = 0;
-    root->page.page.leaf.isLeaf = 1;
-    root->page.page.leaf.numkeys++;
     root->page.page.leaf.rsib_pnum = 0;
     root->page.page.leaf.record[0] = *pointer;
+    root->page.page.leaf.numkeys++;
+
+    headerManager.header.root_pnum = root->pnum;
+    headerManager.modified = true;
+    file_page_write(root->pnum, root);
     /*
     root->keys[0] = key;
     root->pointers[0] = pointer;
@@ -833,7 +844,7 @@ node * insert( Node_t * root, int key, const char* value ) {
      */
 
     if (root == NULL) 
-        return start_new_tree(key, pointer);
+        return start_new_tree(pointer);
 
 
     /* Case: the tree already exists.
@@ -845,7 +856,7 @@ node * insert( Node_t * root, int key, const char* value ) {
     /* Case: leaf has room for key and pointer.
      */
 
-    if (leaf->num_keys < order - 1) {
+    if (leaf->page.page.leaf.numkeys < order) {
         leaf = insert_into_leaf(leaf, key, pointer);
         return root;
     }
