@@ -787,11 +787,18 @@ node * insert_into_new_root(node * left, int key, node * right) {
 Node_t * start_new_tree(int key, Record * pointer) {
 
     Node_t * root = make_leaf();
+    root->page.page.leaf.parent_pnum = 0;
+    root->page.page.leaf.isLeaf = 1;
+    root->page.page.leaf.numkeys++;
+    root->page.page.leaf.rsib_pnum = 0;
+    root->page.page.leaf.record[0] = *pointer;
+    /*
     root->keys[0] = key;
     root->pointers[0] = pointer;
     root->pointers[order - 1] = NULL;
     root->parent = NULL;
     root->num_keys++;
+    */
     return root;
 }
 
