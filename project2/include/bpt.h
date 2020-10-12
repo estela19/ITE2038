@@ -94,7 +94,8 @@ typedef struct node {
  * This global variable is initialized to the
  * default value.
  */
-extern int order;
+extern int order = 32;
+extern int inorder = 248;
 
 /* The queue is used to print the tree in
  * level order, starting from the root
