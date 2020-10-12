@@ -8,6 +8,9 @@
 #define PSIZE 4096
 #define HSIZE 24
 
+#define true 1
+#define false 0
+
 pagenum_t file_alloc_page() {
     pagenum_t* fnum = headerManager.header.free_pnum;
     if (*fnum == 0) {
@@ -18,6 +21,8 @@ pagenum_t file_alloc_page() {
             pwrite(fd, fpage, PSIZE, PSIZE * fpnum);
         }
     }
+    headerManager.header.numpages++;
+    headerManager.modified = true;
     return *fnum;
 }
 
@@ -32,14 +37,14 @@ void file_free_page(pagenum_t pagenum) {
     }
 }
 
-void file_read_page(pagenum_t pagenum, page_t* dest) {
+void file_read_page(pagenum_t pagenum, Page_t* dest) {
     int flag = pread(fd, dest, PSIZE, PSIZE * pagenum);
     if (flag == -1) {
         printf("read page error");
     }
 }
 
-void file_write_page(pagenum_t pagenum, const page_t* src) {
+void file_write_page(pagenum_t pagenum, const Page_t* src) {
     int flag = pwrite(fd, src, PSIZE, PSIZE * pagenum);
     if (flag == -1) {
         printf("write page error");
