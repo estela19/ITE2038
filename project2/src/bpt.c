@@ -522,11 +522,11 @@ Node_t * make_leaf( void ) {
  * to find the index of the parent's pointer to 
  * the node to the left of the key to be inserted.
  */
-int get_left_index(node * parent, node * left) {
+int get_left_index(Node_t * parent, Node_t * left) {
 
     int left_index = 0;
-    while (left_index <= parent->num_keys && 
-            parent->pointers[left_index] != left)
+    while (left_index <= parent->page.page.internal.numkeys && 
+            parent->page.page.internal.precord[left_index].key != left->page.page.internal.precord[0].key)
         left_index++;
     return left_index;
 }
@@ -622,6 +622,8 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
     new_leaf->page.page.leaf.parent_pnum = leaf->page.page.leaf.parent_pnum;
     new_precord->key = new_leaf->page.page.leaf.record[0].key;
     new_precord->pnum = new_leaf->pnum;
+
+    //file_write
 
     return insert_into_parent(root, leaf, new_precord, new_leaf);
 }
@@ -737,7 +739,7 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     int left_index;
     Node_t * parent;
 
-    //parent = left->parent;
+    file_write_page(left->pnum, parent);
 
     /* Case: new root. */
 
