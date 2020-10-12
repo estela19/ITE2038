@@ -653,13 +653,14 @@ Node_t * insert_into_node(Node_t * root, Node_t * n,
  * into a node, causing the node's size to exceed
  * the order, and causing the node to split into two.
  */
-node * insert_into_node_after_splitting(node * root, node * old_node, int left_index, 
-        int key, node * right) {
+Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, Precord* precord, 
+        Node_t * right) {
 
-    int i, j, split, k_prime;
-    node * new_node, * child;
+    int i, j, split;
+    Node_t * new_node, * tmp;
     int * temp_keys;
-    node ** temp_pointers;
+    Precord* temp_precord;
+    Precord* prime_precord;
 
     /* First create a temporary set of keys and pointers
      * to hold everything in order, including
@@ -670,56 +671,56 @@ node * insert_into_node_after_splitting(node * root, node * old_node, int left_i
      * the other half to the new.
      */
 
-    temp_pointers = malloc( (order + 1) * sizeof(node *) );
-    if (temp_pointers == NULL) {
-        perror("Temporary pointers array for splitting nodes.");
-        exit(EXIT_FAILURE);
-    }
-    temp_keys = malloc( order * sizeof(int) );
-    if (temp_keys == NULL) {
-        perror("Temporary keys array for splitting nodes.");
+    temp_precord = malloc((inorder + 1) * sizeof(Precord) );
+    if (temp_precord == NULL) {
+        perror("Temporary precord array for splitting nodes.");
         exit(EXIT_FAILURE);
     }
 
-    for (i = 0, j = 0; i < old_node->num_keys + 1; i++, j++) {
+    prime_precord = malloc(sizeof(Precord));
+    if (prime_precord == NULL) {
+        perror("Prime precord array for splitting nodes.");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0, j = 0; i < old_node->page.page.internal.numkeys; i++, j++) {
         if (j == left_index + 1) j++;
-        temp_pointers[j] = old_node->pointers[i];
+        temp_precord[j] = old_node->page.page.internal.precord[i];
     }
 
-    for (i = 0, j = 0; i < old_node->num_keys; i++, j++) {
-        if (j == left_index) j++;
-        temp_keys[j] = old_node->keys[i];
-    }
-
-    temp_pointers[left_index + 1] = right;
-    temp_keys[left_index] = key;
+    temp_precord[left_index + 1] = *precord;
 
     /* Create the new node and copy
      * half the keys and pointers to the
      * old and half to the new.
      */  
-    split = cut(order);
+    split = cut(inorder);
     new_node = make_node();
-    old_node->num_keys = 0;
-    for (i = 0; i < split - 1; i++) {
-        old_node->pointers[i] = temp_pointers[i];
-        old_node->keys[i] = temp_keys[i];
+    old_node->page.page.internal.numkeys = 0;
+
+    for (i = 0; i < split; i++) {
+        old_node->page.page.internal.precord[i] = temp_precord[i];
         old_node->num_keys++;
     }
-    old_node->pointers[i] = temp_pointers[i];
-    k_prime = temp_keys[split - 1];
-    for (++i, j = 0; i < order; i++, j++) {
-        new_node->pointers[j] = temp_pointers[i];
-        new_node->keys[j] = temp_keys[i];
+
+    prime_precord = temp_precord[split];
+    new_node->page.page.internal.more_pnum = temp_precord[split].pnum;
+    prime_precord.pnum = new_node->pnum;
+
+    for (++i, j = 0; i < inorder; i++, j++) {
+        new_node->page.page.internal.precord[j] = temp_precord[i];
         new_node->num_keys++;
     }
-    new_node->pointers[j] = temp_pointers[i];
-    free(temp_pointers);
-    free(temp_keys);
-    new_node->parent = old_node->parent;
-    for (i = 0; i <= new_node->num_keys; i++) {
-        child = new_node->pointers[i];
-        child->parent = new_node;
+
+    free(temp_precord);
+
+    new_node->page.page.internal.parent_pnum = old_node->page.page.internal.parent_pnum;
+
+    //TODO : optimization
+    for (i = 0; i <= new_node->page.page.internal.numkeys; i++) {
+        file_read_page(new_node->page.page.internal.precord[i].pnum, tmp);
+        tmp->page.page.internal.parent_pnum = new_node->pnum;
+        file_write_page(new_node->page.page.internal.numkeys; i++);
     }
 
     /* Insert a new key into the parent of the two
@@ -727,7 +728,7 @@ node * insert_into_node_after_splitting(node * root, node * old_node, int left_i
      * the old node to the left and the new to the right.
      */
 
-    return insert_into_parent(root, old_node, k_prime, new_node);
+    return insert_into_parent(root, old_node, prime_precord, new_node);
 }
 
 
@@ -761,14 +762,14 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     /* Simple case: the new key fits into the node. 
      */
 
-    if (parent->num_keys < inorder)
+    if (parent->page.page.internal.numkeys < inorder)
         return insert_into_node(root, parent, left_index, new_precord);
 
     /* Harder case:  split a node in order 
      * to preserve the B+ tree properties.
      */
 
-    return insert_into_node_after_splitting(root, parent, left_index, key, right);
+    return insert_into_node_after_splitting(root, parent, left_index, new_precord, right);
 }
 
 
