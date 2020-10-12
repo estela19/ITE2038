@@ -49,18 +49,23 @@ typedef struct Page_t_ {
     Page page;
 }Page_t;
 
+typedef struct Node_t_ {
+    Page_t page;
+    pagenum_t pnum;
+}Node_t;
+
 
 typedef struct HeaderManager_ {
     Header header;
-    int sync = 0;
+    int modified = 0;
 }HeaderManager;
 
-HeaderManager headerManager;
+extern HeaderManager headerManager;
 
 pagenum_t file_alloc_page();
 
 void file_free_page(pagenum_t pagenum);
 
-void file_read_page(pagenum_t pagenum, page_t* dest);
+void file_read_page(pagenum_t pagenum, Page_t* dest);
 
-void file_write_page(pagenum_t pagenum, const page_t* src);
+void file_write_page(pagenum_t pagenum, const Page_t* src);
