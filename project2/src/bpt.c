@@ -394,37 +394,22 @@ int find_range( node * root, int key_start, int key_end, bool verbose,
  * if the verbose flag is set.
  * Returns the leaf containing the given key.
  */
-Node_t * find_leaf( Node_t * root, int key, bool verbose ) {
+Node_t * find_leaf( Node_t * root, int key) {
     int i = 0;
     Node_t * c = root;
     if (c == NULL) {
-        if (verbose) 
-            printf("Empty tree.\n");
         return c;
     }
     while (!c->page.page.internal.isLeaf) {
-        if (verbose) {
-            printf("[");
-            for (i = 0; i < c->num_keys - 1; i++)
-                printf("%d ", c->keys[i]);
-            printf("%d] ", c->keys[i]);
-        }
         i = 0;
         while (i < c->page.page.internal.numkeys) {
             if (key >= c->page.page.internal.precord[i].key) i++;
             else break;
         }
-        if (verbose)
-            printf("%d ->\n", i);
         c->pnum = c->page.page.internal.precord[i].pnum;
         file_read_page(c->page.page.internal.precord[i].pnum, c);
     }
-    if (verbose) {
-        printf("Leaf [");
-        for (i = 0; i < c->num_keys - 1; i++)
-            printf("%d ", c->keys[i]);
-        printf("%d] ->\n", c->keys[i]);
-    }
+
     return c;
 }
 
@@ -432,9 +417,9 @@ Node_t * find_leaf( Node_t * root, int key, bool verbose ) {
 /* Finds and returns the record to which
  * a key refers.
  */
-Record * find( Node_t * root, int key, bool verbose ) {
+Record * find( Node_t * root, int key) {
     int i = 0;
-    Node_t * c = find_leaf( root, key, verbose );
+    Node_t * c = find_leaf( root, key);
     if (c == NULL) return NULL;
     for (i = 0; i < c->page.page.leaf.numkeys; i++)
         if (c->page.page.leaf.record[i].key == key) break;
