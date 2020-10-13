@@ -6,11 +6,6 @@
 
 #include "file.h"
 
-#define PSIZE 4096
-#define HSIZE 24
-
-#define true 1
-#define false 0
 
 #ifdef O_DIRECT
 #define O_DIRECT 00040000

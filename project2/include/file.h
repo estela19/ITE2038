@@ -1,5 +1,11 @@
 #include<stdint.h>
 
+#define PSIZE 4096
+#define HSIZE 24
+
+#define true 1
+#define false 0
+
 typedef uint64_t pagenum_t;
 
 typedef struct Record_ {
@@ -22,6 +28,7 @@ typedef struct Leaf_ {
     pagenum_t parent_pnum;
     int isLeaf;
     int numkeys;
+    char padding[120 - 16];
     pagenum_t rsib_pnum;
     Record record[31];
 }Leaf;
@@ -30,12 +37,14 @@ typedef struct Internal_ {
     pagenum_t parent_pnum;
     int isLeaf;
     int numkeys;
+    char padding[120 - 16];
     pagenum_t more_pnum;
     Precord precord[248];
 }Internal;
 
 typedef struct Free_ {
     pagenum_t free_pnum;
+    char padding[PSIZE - 8];
 }Free;
 
 typedef union Page_ {
