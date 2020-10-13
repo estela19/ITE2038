@@ -419,7 +419,7 @@ Node_t * find_leaf( Node_t * root, int key) {
  */
 Record * find( Node_t * root, int key) {
     int i = 0;
-    Node_t * c = find_leaf( root, key);
+    Node_t * c = find_leaf(root, key);
     if (c == NULL) return NULL;
     for (i = 0; i < c->page.page.leaf.numkeys; i++)
         if (c->page.page.leaf.record[i].key == key) break;
@@ -895,53 +895,49 @@ int get_neighbor_index( node * n ) {
 }
 
 
-node * remove_entry_from_node(node * n, int key, node * pointer) {
+Node_t * remove_entry_from_node(Node_t * n, int key, Node_t * pointer) {
 
     int i, num_pointers;
 
     // Remove the key and shift other keys accordingly.
     i = 0;
-    while (n->keys[i] != key)
+    while (n->page.page.leaf.record[i].key != key)
         i++;
-    for (++i; i < n->num_keys; i++)
-        n->keys[i - 1] = n->keys[i];
-
-    // Remove the pointer and shift other pointers accordingly.
-    // First determine number of pointers.
-    num_pointers = n->is_leaf ? n->num_keys : n->num_keys + 1;
-    i = 0;
-    while (n->pointers[i] != pointer)
-        i++;
-    for (++i; i < num_pointers; i++)
-        n->pointers[i - 1] = n->pointers[i];
-
+    for (++i; i < n->page.page.leaf.numkeys; i++)
+        n->page.page.leaf.record[i - 1] = n->page.page.leaf.record[i];
 
     // One key fewer.
-    n->num_keys--;
+    n->page.page.internal.numkeys--;
 
     // Set the other pointers to NULL for tidiness.
     // A leaf uses the last pointer to point to the next leaf.
-    if (n->is_leaf)
-        for (i = n->num_keys; i < order - 1; i++)
-            n->pointers[i] = NULL;
-    else
-        for (i = n->num_keys + 1; i < order; i++)
-            n->pointers[i] = NULL;
+    if (n->page.page.internal.isLeaf) {
+        for (i = n->page.page.leaf.numkeys; i < order; i++) {
+            n->page.page.leaf.record[i].key = 0;
+            n->page.page.leaf.record[i].value = 0;
+        }
+    }
+    else {
+        for (i = n->page.page.internal.numkeys; i < inorder; i++) {
+            n->page.page.internal.precord[i].key = 0;
+            n->page.page.internal.precord[i].pnum = 0;
+        }
+    }
 
     return n;
 }
 
 
-node * adjust_root(node * root) {
+Node_t * adjust_root(Node_t * root) {
 
-    node * new_root;
+    Node_t * new_root;
 
     /* Case: nonempty root.
      * Key and pointer have already been deleted,
      * so nothing to be done.
      */
 
-    if (root->num_keys > 0)
+    if (root->page.page.internal.numkeys > 0)
         return root;
 
     /* Case: empty root. 
@@ -951,20 +947,27 @@ node * adjust_root(node * root) {
     // the first (only) child
     // as the new root.
 
-    if (!root->is_leaf) {
-        new_root = root->pointers[0];
-        new_root->parent = NULL;
+    if (!root->page.page.internal.isLeaf) {
+        file_read_page(root->page.page.internal.more_pnum, &(new_root->page));
+        new_root->page.page.leaf.parent_pnum = 0;
+        file_write_page(new_root->pnum, &(new_root->page);
+        
+        //change header
+        headerManager.header.root_pnum = new_root->pnum;
+        headerManager.modified true;
+
+        file_free_page(root->pnum);
     }
 
     // If it is a leaf (has no children),
     // then the whole tree is empty.
 
-    else
-        new_root = NULL;
+    else {
+        headerManager.header.root_pnum = 0;
+        headerManager.modified = true;
+    }
 
-    free(root->keys);
-    free(root->pointers);
-    free(root);
+    free(new_root);
 
     return new_root;
 }
@@ -1143,10 +1146,11 @@ node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_i
  * from the leaf, and then makes all appropriate
  * changes to preserve the B+ tree properties.
  */
-node * delete_entry( node * root, node * n, int key, void * pointer ) {
+Page_t * delete_entry( Page_t * root, Page_t * n, int key, Record * pointer ) {
+
 
     int min_keys;
-    node * neighbor;
+    Page_t * neighbor;
     int neighbor_index;
     int k_prime_index, k_prime;
     int capacity;
@@ -1214,13 +1218,13 @@ node * delete_entry( node * root, node * n, int key, void * pointer ) {
 
 /* Master deletion function.
  */
-node * delete(node * root, int key) {
+Node_t * delete(Node_t * root, int key) {
 
-    node * key_leaf;
-    record * key_record;
+    Node_t * key_leaf;
+    Record * key_record;
 
-    key_record = find(root, key, false);
-    key_leaf = find_leaf(root, key, false);
+    key_record = find(root, key);
+    key_leaf = find_leaf(root, key);
     if (key_record != NULL && key_leaf != NULL) {
         root = delete_entry(root, key_leaf, key, key_record);
         free(key_record);
