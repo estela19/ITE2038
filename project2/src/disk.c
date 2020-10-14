@@ -1,5 +1,6 @@
 #include "disk.h"
 #include "file.h"
+#include "bpt.h"
 
 int open_table(char* pathname) {
     file_open(pathname);
@@ -20,9 +21,8 @@ int db_insert(int64_t key, char* value) {
     file_read_page(headerManager.header.root_pnum, root);
     int result = insert(root, key, value);
     if (headerManager.modified) {
-        file_write_page(0, &(headerManager.header));
+        file_write_header();
     }
-    file_write_header();
     return result;
 }
 
@@ -36,5 +36,11 @@ int db_find(int64_t key, char* ret_val) {
 }
 
 int db_delete(int64_t key) {
-
+    Page_t* root = NULL;
+    file_read_page(headerManager.header.root_pnum, root);
+    int result = delete(root, key);
+    if (headerManager.modified) {
+        file_write_header();
+    }
+    return 0;
 }
