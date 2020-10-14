@@ -874,9 +874,10 @@ int insert( Node_t * root, int key, const char* value ) {
  * is the leftmost child), returns -1 to signify
  * this special case.
  */
-int get_neighbor_index( node * n ) {
+int get_neighbor_index( Node_t * n ) {
 
     int i;
+    Node_t* parent;
 
     /* Return the index of the key to the left
      * of the pointer in the parent pointing
@@ -884,8 +885,12 @@ int get_neighbor_index( node * n ) {
      * If n is the leftmost child, this means
      * return -1.
      */
-    for (i = 0; i <= n->parent->num_keys; i++)
-        if (n->parent->pointers[i] == n)
+    
+    file_read_page(n->pnum, parent);
+    for (i = 0; i <= parent->page.page.internal.numkeys; i++)
+        if (parent->page.page.internal.more_pnum == n->pnum)
+            return -1;
+        if (parent->page.page.internal.precord[i].pnum == n)
             return i - 1;
 
     // Error state.
@@ -979,20 +984,10 @@ Node_t * adjust_root(Node_t * root) {
  * can accept the additional entries
  * without exceeding the maximum.
  */
-node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime) {
+Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime) {
 
-    int i, j, neighbor_insertion_index, n_end;
-    node * tmp;
+    int i, neighbor_insertion_index;
 
-    /* Swap neighbor with node if node is on the
-     * extreme left and neighbor is to its right.
-     */
-
-    if (neighbor_index == -1) {
-        tmp = n;
-        n = neighbor;
-        neighbor = tmp;
-    }
 
     /* Starting point in the neighbor for copying
      * keys and pointers from n.
@@ -1000,44 +995,41 @@ node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index
      * in the special case of n being a leftmost child.
      */
 
-    neighbor_insertion_index = neighbor->num_keys;
+    neighbor_insertion_index = neighbor->page.page.internal.numkeys;
 
     /* Case:  nonleaf node.
      * Append k_prime and the following pointer.
      * Append all pointers and keys from the neighbor.
      */
 
-    if (!n->is_leaf) {
+    if (!n->page.page.internal.isLeaf) {
 
         /* Append k_prime.
          */
+        if (neighbor_index != -1) {
+            neighbor->page.page.internal.precord[neighbor_insertion_index].key = k_prime;
+            neighbor->page.page.internal.precord[neighbor_insertion_index].pnum = n->page.page.internal.more_pnum;
+            neighbor->page.page.internal.numkeys++;
+            
+            file_free_page(n->pnum);
+            file_write_page(neighbor->pnum, &(neighbor->page));
 
-        neighbor->keys[neighbor_insertion_index] = k_prime;
-        neighbor->num_keys++;
+            free(n);
+        }
+        else {
+            n->page.page.internal.precord[0].key = k_prime;
+            n->page.page.internal.precord[0].pnum = neighbor->page.page.internal.more_pnum;
+            for (i = 0; i < neighbor->page.page.internal.numkeys; i++) {
+                n->page.page.internal.precord[i + 1] = neighbor->page.page.internal.precord[i];
+            }
+            n->page.page.internal.numkeys = neighbor->page.page.internal.numkeys + 1;
 
+            file_free_page(neighbor->pnum);
+            file_write_page(n->pnum, &(n->page));
 
-        n_end = n->num_keys;
-
-        for (i = neighbor_insertion_index + 1, j = 0; j < n_end; i++, j++) {
-            neighbor->keys[i] = n->keys[j];
-            neighbor->pointers[i] = n->pointers[j];
-            neighbor->num_keys++;
-            n->num_keys--;
+            free(neighbor);
         }
 
-        /* The number of pointers is always
-         * one more than the number of keys.
-         */
-
-        neighbor->pointers[i] = n->pointers[j];
-
-        /* All children must now point up to the same parent.
-         */
-
-        for (i = 0; i < neighbor->num_keys + 1; i++) {
-            tmp = (node *)neighbor->pointers[i];
-            tmp->parent = neighbor;
-        }
     }
 
     /* In a leaf, append the keys and pointers of
@@ -1047,18 +1039,29 @@ node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index
      */
 
     else {
-        for (i = neighbor_insertion_index, j = 0; j < n->num_keys; i++, j++) {
-            neighbor->keys[i] = n->keys[j];
-            neighbor->pointers[i] = n->pointers[j];
-            neighbor->num_keys++;
+        if (neighbor_index != -1) {
+            neighbor->page.page.leaf.rsib_pnum = n->page.page.leaf.rsib_pnum;
+            file_free_page(n->pnum);
+
+            free(n);
         }
-        neighbor->pointers[order - 1] = n->pointers[order - 1];
+        else {
+            for (i = 0; i < neighbor->page.page.leaf.numkeys; i++) {
+                n->page.page.leaf.record[i] = neighbor->page.page.leaf.record[i];
+            }
+            n->page.page.leaf.numkeys = neighbor->page.page.leaf.numkeys;
+            n->page.page.leaf.rsib_pnum = neighbor->page.page.leaf.rsib_pnum;
+
+            file_free_page(neighbor->pnum);
+            file_write_page(n->pnum, &(n->page));
+
+            free(neighbor);
+        }
+
     }
 
-    root = delete_entry(root, n->parent, k_prime, n);
-    free(n->keys);
-    free(n->pointers);
-    free(n); 
+    root = delete_entry(root, n->page.page.internal.parent_pnum, k_prime, n);
+
     return root;
 }
 
@@ -1146,7 +1149,7 @@ node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_i
  * from the leaf, and then makes all appropriate
  * changes to preserve the B+ tree properties.
  */
-Page_t * delete_entry( Page_t * root, Page_t * n, int key, Record * pointer ) {
+Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer ) {
 
 
     int min_keys;
@@ -1174,13 +1177,14 @@ Page_t * delete_entry( Page_t * root, Page_t * n, int key, Record * pointer ) {
      * to be preserved after deletion.
      */
 
-    min_keys = n->is_leaf ? cut(order - 1) : cut(order) - 1;
+    //delay merged
+    min_keys = 0;
 
     /* Case:  node stays at or above minimum.
      * (The simple case.)
      */
 
-    if (n->num_keys >= min_keys)
+    if (n->page.page.internal.numkeys > min_keys)
         return root;
 
     /* Case:  node falls below minimum.
@@ -1204,14 +1208,14 @@ Page_t * delete_entry( Page_t * root, Page_t * n, int key, Record * pointer ) {
     capacity = n->is_leaf ? order : order - 1;
 
     /* Coalescence. */
-
-    if (neighbor->num_keys + n->num_keys < capacity)
+    //Merge
+    if (n->page.page.leaf.numkeys <= min_keys)
         return coalesce_nodes(root, n, neighbor, neighbor_index, k_prime);
 
     /* Redistribution. */
 
-    else
-        return redistribute_nodes(root, n, neighbor, neighbor_index, k_prime_index, k_prime);
+    //else
+    //    return redistribute_nodes(root, n, neighbor, neighbor_index, k_prime_index, k_prime);
 }
 
 
