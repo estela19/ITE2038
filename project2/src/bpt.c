@@ -877,7 +877,7 @@ int insert( Node_t * root, int key, const char* value ) {
 int get_neighbor_index( Node_t * n ) {
 
     int i;
-    Node_t* parent;
+    Node_t* parent = (Node_t*)malloc(sizeof(Node_t));
 
     /* Return the index of the key to the left
      * of the pointer in the parent pointing
@@ -886,12 +886,14 @@ int get_neighbor_index( Node_t * n ) {
      * return -1.
      */
     
-    file_read_page(n->pnum, parent);
+    file_read_page(n->pnum, &(parent->page));
     for (i = 0; i <= parent->page.page.internal.numkeys; i++)
         if (parent->page.page.internal.more_pnum == n->pnum)
             return -1;
         if (parent->page.page.internal.precord[i].pnum == n)
             return i - 1;
+
+    free(parent);
 
     // Error state.
     printf("Search for nonexistent pointer to node in parent.\n");
@@ -1153,7 +1155,8 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer ) {
 
 
     int min_keys;
-    Page_t * neighbor;
+    Node_t * neighbor;
+    Node_t* parent;
     int neighbor_index;
     int k_prime_index, k_prime;
     int capacity;
@@ -1199,13 +1202,22 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer ) {
      * to the neighbor.
      */
 
+    parent = (Node_t*)malloc(sizeof(Node_t));
+    file_read_page(n->page.page.internal.parent_pnum, &(parent->page));
+
     neighbor_index = get_neighbor_index( n );
     k_prime_index = neighbor_index == -1 ? 0 : neighbor_index;
-    k_prime = n->parent->keys[k_prime_index];
-    neighbor = neighbor_index == -1 ? n->parent->pointers[1] : 
-        n->parent->pointers[neighbor_index];
+    k_prime = parent->page.page.internal.precord[k_prime_index].key;
+    
+    if (neighbor_index == -1) {
+        file_read_page(parent->page.page.internal.precord[0].pnum, &(neighbor->page));
+        neighbor->pnum = parent->page.page.internal.precord[0].pnum;
+    }
+    else {
+        file_read_page(parent->page.page.internal.precord[neighbor_index].pnum, &(neighbor->page));
+        neighbor->pnum = parent->page.page.internal.precord[neighbor_index].pnum;
+    }
 
-    capacity = n->is_leaf ? order : order - 1;
 
     /* Coalescence. */
     //Merge
