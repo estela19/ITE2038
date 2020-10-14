@@ -1231,7 +1231,7 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer ) {
 
 /* Master deletion function.
  */
-Node_t * delete(Node_t * root, int key) {
+int delete(Node_t * root, int key) {
 
     Node_t * key_leaf;
     Record * key_record;
@@ -1242,7 +1242,7 @@ Node_t * delete(Node_t * root, int key) {
         root = delete_entry(root, key_leaf, key, key_record);
         free(key_record);
     }
-    return root;
+    return 0;
 }
 
 

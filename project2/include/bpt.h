@@ -158,7 +158,7 @@ Node_t * adjust_root(Node_t * root);
 Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime);
 Node_t * redistribute_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime_index, int k_prime);
 Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer );
-Node_t * delete( Node_t * root, int key );
+int delete( Node_t * root, int key );
 
 void destroy_tree_nodes(node * root);
 node * destroy_tree(node * root);
