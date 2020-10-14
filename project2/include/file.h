@@ -10,7 +10,7 @@ typedef uint64_t pagenum_t;
 
 typedef struct Record_ {
     int64_t key;
-    char* value[120];
+    char value[120];
 }Record;
 
 typedef struct Precord_ {
@@ -66,7 +66,7 @@ typedef struct Node_t_ {
 
 typedef struct HeaderManager_ {
     Header header;
-    int modified = 0;
+    int modified;
 }HeaderManager;
 
 extern HeaderManager headerManager;

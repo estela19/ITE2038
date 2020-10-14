@@ -330,7 +330,7 @@ void print_tree( node * root ) {
  * appropriate message to stdout.
  */
 void find_and_print(node * root, int key, bool verbose) {
-    record * r = find(root, key, verbose);
+    record * r = find(root, key);
     if (r == NULL)
         printf("Record not found under key %d.\n", key);
     else 
@@ -372,7 +372,7 @@ int find_range( node * root, int key_start, int key_end, bool verbose,
         int returned_keys[], void * returned_pointers[]) {
     int i, num_found;
     num_found = 0;
-    node * n = find_leaf( root, key_start, verbose );
+    node * n = find_leaf( root, key_start);
     if (n == NULL) return 0;
     for (i = 0; i < n->num_keys && n->keys[i] < key_start; i++) ;
     if (i == n->num_keys) return 0;
@@ -387,6 +387,7 @@ int find_range( node * root, int key_start, int key_end, bool verbose,
     }
     return num_found;
 }
+
 
 
 /* Traces the path from the root to a leaf, searching
@@ -426,7 +427,7 @@ Record * find( Node_t * root, int key) {
     if (i == c->page.page.leaf.numkeys) 
         return NULL;
     else
-        return c->page.page.leaf.record[i];
+        return &(c->page.page.leaf.record[i]);
 }
 
 /* Finds the appropriate place to
@@ -453,7 +454,7 @@ Record * make_record(int key, const char* value) {
     }
     else {
         new_record->key = key;
-        new_record->value = value;
+        strcpy(new_record->value, value);
     }
     return new_record;
 }
@@ -529,10 +530,10 @@ Node_t * insert_into_leaf( Node_t * leaf, int key, Record * pointer ) {
         insertion_point++;
 
     for (i = leaf->page.page.leaf.numkeys; i > insertion_point; i--) {
-        leaf->page.page.leaf.record[i] = leaf->page.page.record[i - 1];
+        leaf->page.page.leaf.record[i] = leaf->page.page.leaf.record[i - 1];
     }
-    leaf->page.page.leaf.record[insertion_point] = record;
-    leaf->num_keys++;
+    leaf->page.page.leaf.record[insertion_point] = *pointer;
+    leaf->page.page.leaf.numkeys++;
 
     file_write_page(leaf->pnum, leaf);
 
@@ -570,40 +571,33 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
     while (insertion_index < order && leaf->page.page.leaf.record[insertion_index].key < key)
         insertion_index++;
 
-    for (i = 0, j = 0; i < leaf->page.page.leaf.num_keys; i++, j++) {
+    for (i = 0, j = 0; i < leaf->page.page.leaf.numkeys; i++, j++) {
         if (j == insertion_index) j++;
         temp_record[j] = leaf->page.page.leaf.record[i];
     }
 
-    temp_record[insertion_index] = pointer;
+    temp_record[insertion_index] = *pointer;
 
-    leaf->num_keys = 0;
+    leaf->page.page.leaf.numkeys = 0;
 
     split = cut(order);
 
     for (i = 0; i < split; i++) {
         leaf->page.page.leaf.record[i] = temp_record[i];
-        leaf->num_keys++;
+        leaf->page.page.leaf.numkeys++;
     }
 
     for (i = split, j = 0; i < order; i++, j++) {
         new_leaf->page.page.leaf.record[j] = temp_record[i];
-        new_leaf->num_keys++;
+        new_leaf->page.page.leaf.numkeys++;
     }
 
-    free(temp_reord);
+    free(temp_record);
 
     new_leaf->page.page.leaf.rsib_pnum = leaf->page.page.leaf.rsib_pnum;
     leaf->page.page.leaf.rsib_pnum = new_leaf->pnum;
 
-    /*
-    for (i = leaf->num_keys; i < order - 1; i++)
-        leaf->pointers[i] = NULL;
-    for (i = new_leaf->num_keys; i < order - 1; i++)
-        new_leaf->pointers[i] = NULL;
-    */
-
-    //¸¸¾à ºÎ¸ð°¡ ¶Ç split µÇ´Â°æ¿ì?
+    //ï¿½ï¿½ï¿½ï¿½ ï¿½Î¸ï¿½ ï¿½ï¿½ split ï¿½Ç´Â°ï¿½ï¿½?
     new_leaf->page.page.leaf.parent_pnum = leaf->page.page.leaf.parent_pnum;
     new_precord->key = new_leaf->page.page.leaf.record[0].key;
     new_precord->pnum = new_leaf->pnum;
@@ -638,11 +632,12 @@ Node_t * insert_into_node(Node_t * root, Node_t * n,
  * into a node, causing the node's size to exceed
  * the order, and causing the node to split into two.
  */
-Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, Precord* precord, 
+Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, int left_index, Precord* precord, 
         Node_t * right) {
 
     int i, j, split;
-    Node_t * new_node, * tmp;
+    Node_t * new_node;
+    Page_t * tmp;
     int * temp_keys;
     Precord* temp_precord;
     Precord* prime_precord;
@@ -668,6 +663,12 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, Prec
         exit(EXIT_FAILURE);
     }
 
+    tmp = malloc(sizeof(Page_t));
+    if (tmp == NULL) {
+    perror("Tmp for splitting nodes.");
+    exit(EXIT_FAILURE);
+    }
+
     for (i = 0, j = 0; i < old_node->page.page.internal.numkeys; i++, j++) {
         if (j == left_index + 1) j++;
         temp_precord[j] = old_node->page.page.internal.precord[i];
@@ -685,16 +686,16 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, Prec
 
     for (i = 0; i < split; i++) {
         old_node->page.page.internal.precord[i] = temp_precord[i];
-        old_node->num_keys++;
+        old_node->page.page.internal.numkeys++;
     }
 
-    prime_precord = temp_precord[split];
+    prime_precord = &temp_precord[split];
     new_node->page.page.internal.more_pnum = temp_precord[split].pnum;
-    prime_precord.pnum = new_node->pnum;
+    prime_precord->pnum = new_node->pnum;
 
     for (++i, j = 0; i < inorder; i++, j++) {
         new_node->page.page.internal.precord[j] = temp_precord[i];
-        new_node->num_keys++;
+        new_node->page.page.internal.numkeys++;
     }
 
     free(temp_precord);
@@ -704,9 +705,11 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, Prec
     //TODO : optimization
     for (i = 0; i <= new_node->page.page.internal.numkeys; i++) {
         file_read_page(new_node->page.page.internal.precord[i].pnum, tmp);
-        tmp->page.page.internal.parent_pnum = new_node->pnum;
-        file_write_page(new_node->page.page.internal.numkeys; i++);
+        tmp->page.internal.parent_pnum = new_node->pnum;
+        file_write_page(new_node->page.page.internal.numkeys, tmp);
     }
+
+    free(tmp);
 
     /* Insert a new key into the parent of the two
      * nodes resulting from the split, with
@@ -771,7 +774,7 @@ Node_t * insert_into_new_root(Node_t * left, Precord* key_record) {
 
     root->page.page.internal.parent_pnum = 0;
     root->page.page.internal.more_pnum = left->pnum;
-    root->page.page.internal.precord[0] = key_record;
+    root->page.page.internal.precord[0] = *key_record;
     root->page.page.internal.numkeys++;
 
     file_page_write(root->pnum, root);
@@ -795,13 +798,7 @@ Node_t * start_new_tree( Record * pointer) {
     headerManager.header.root_pnum = root->pnum;
     headerManager.modified = true;
     file_page_write(root->pnum, root);
-    /*
-    root->keys[0] = key;
-    root->pointers[0] = pointer;
-    root->pointers[order - 1] = NULL;
-    root->parent = NULL;
-    root->num_keys++;
-    */
+
     return root;
 }
 
@@ -822,7 +819,7 @@ int insert( Node_t * root, int key, const char* value ) {
      * duplicates.
      */
 
-    if (find(root, key, false) != NULL)
+    if (find(root, key) != NULL)
         return 0;
 
     /* Create a new record for the
@@ -845,7 +842,7 @@ int insert( Node_t * root, int key, const char* value ) {
      * (Rest of function body.)
      */
 
-    leaf = find_leaf(root, key, false);
+    leaf = find_leaf(root, key);
 
     /* Case: leaf has room for key and pointer.
      */
@@ -921,7 +918,7 @@ Node_t * remove_entry_from_node(Node_t * n, int key, Node_t * pointer) {
     if (n->page.page.internal.isLeaf) {
         for (i = n->page.page.leaf.numkeys; i < order; i++) {
             n->page.page.leaf.record[i].key = 0;
-            n->page.page.leaf.record[i].value = 0;
+            memset(n->page.page.leaf.record[i].value, 0, sizeof(120));
         }
     }
     else {
@@ -957,11 +954,11 @@ Node_t * adjust_root(Node_t * root) {
     if (!root->page.page.internal.isLeaf) {
         file_read_page(root->page.page.internal.more_pnum, &(new_root->page));
         new_root->page.page.leaf.parent_pnum = 0;
-        file_write_page(new_root->pnum, &(new_root->page);
+        file_write_page(new_root->pnum, &(new_root->page));
         
         //change header
         headerManager.header.root_pnum = new_root->pnum;
-        headerManager.modified true;
+        headerManager.modified = true;
 
         file_free_page(root->pnum);
     }
