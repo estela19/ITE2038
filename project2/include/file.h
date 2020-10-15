@@ -1,3 +1,6 @@
+#ifndef __FILE_H__
+#define __FILE_H__
+
 #include<stdint.h>
 
 #define PSIZE 4096
@@ -88,3 +91,5 @@ void file_write_page(pagenum_t pagenum, const Page_t* src);
 void file_write_header();
 
 void file_read_header();
+
+#endif

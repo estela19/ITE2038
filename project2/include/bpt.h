@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+
+#include "file.h"
+
 #ifdef WINDOWS
 #define bool char
 #define false 0
@@ -14,7 +17,8 @@
 #endif
 
 // Default order is 4.
-#define DEFAULT_ORDER 4
+#define DEFAULT_ORDER 31
+#define INTERNAL_ORDER 248
 
 // Minimum order is necessarily 3.  We set the maximum
 // order arbitrarily.  You may change the maximum order.
@@ -95,8 +99,6 @@ typedef struct node {
  * This global variable is initialized to the
  * default value.
  */
-extern int order = 32;
-extern int inorder = 248;
 
 /* The queue is used to print the tree in
  * level order, starting from the root
@@ -147,7 +149,7 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
 Node_t * insert_into_node(Node_t * root, Node_t * n, int left_index,  Precord* precord);
 Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * parent, int left_index, Precord* precord, Node_t * right);
 Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, Node_t * right);
-Node_t * insert_into_new_root(Node_t * left, Precord * key_record);
+Node_t * insert_into_new_root(Node_t * left, Precord * key_record, Node_t* right);
 Node_t * start_new_tree(Record * pointer);
 int insert( Node_t * root, int key, const char* value );
 
@@ -156,7 +158,7 @@ int insert( Node_t * root, int key, const char* value );
 int get_neighbor_index( Node_t * n );
 Node_t * adjust_root(Node_t * root);
 Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime);
-Node_t * redistribute_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime_index, int k_prime);
+node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime_index, int k_prime);
 Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer );
 int delete( Node_t * root, int key );
 

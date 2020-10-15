@@ -54,6 +54,7 @@
 
 #include "bpt.h"
 #include "file.h"
+#include "disk.h"
 
 // GLOBALS.
 
@@ -68,6 +69,7 @@
  * default value.
  */
 int order = DEFAULT_ORDER;
+int inorder = INTERNAL_ORDER;
 
 /* The queue is used to print the tree in
  * level order, starting from the root
@@ -407,8 +409,14 @@ Node_t * find_leaf( Node_t * root, int key) {
             if (key >= c->page.page.internal.precord[i].key) i++;
             else break;
         }
-        c->pnum = c->page.page.internal.precord[i].pnum;
-        file_read_page(c->page.page.internal.precord[i].pnum, c);
+        i--;
+        if(i == -1){
+            c->pnum = c->page.page.internal.more_pnum;
+        }
+        else{
+            c->pnum = c->page.page.internal.precord[i].pnum;
+        }
+        file_read_page(c->pnum, &(c->page));
     }
 
     return c;
@@ -471,8 +479,8 @@ Node_t * make_node( void ) {
         exit(EXIT_FAILURE);
     }
     new_node->page.page.internal.isLeaf = false;
-    new_node->page.page.internal.parent_pnum = -1;
-    new_node->page.page.internal.more_pnum = -1;
+    new_node->page.page.internal.parent_pnum = 0;
+    new_node->page.page.internal.more_pnum = 0;
     new_node->pnum = file_alloc_page();
 
     /*
@@ -555,14 +563,14 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
 
     new_leaf = make_leaf();
 
-    temp_record = malloc((order + 1) * sizeof(Record));
+    temp_record = (Record*)malloc((order + 1) * sizeof(Record));
     if (temp_record == NULL) {
         perror("Temporary record array.");
         exit(EXIT_FAILURE);
     }
 
-    new_precord = malloc(sizeof(Precord));
-    if (new_precord = NULL) {
+    new_precord = (Precord*)malloc(sizeof(Precord));
+    if (new_precord == NULL) {
         perror("new preocrd.");
         exit(EXIT_FAILURE);
     }
@@ -587,7 +595,7 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
         leaf->page.page.leaf.numkeys++;
     }
 
-    for (i = split, j = 0; i < order; i++, j++) {
+    for (i = split, j = 0; i < order + 1; i++, j++) {
         new_leaf->page.page.leaf.record[j] = temp_record[i];
         new_leaf->page.page.leaf.numkeys++;
     }
@@ -601,6 +609,15 @@ Node_t * insert_into_leaf_after_splitting(Node_t * root, Node_t * leaf, int key,
     new_leaf->page.page.leaf.parent_pnum = leaf->page.page.leaf.parent_pnum;
     new_precord->key = new_leaf->page.page.leaf.record[0].key;
     new_precord->pnum = new_leaf->pnum;
+
+    for(i = leaf->page.page.leaf.numkeys; i < order; i++){
+        leaf->page.page.leaf.record[i].key = 0;
+        memset(leaf->page.page.leaf.record[i].value, 0, sizeof(120));
+    }
+    for(i = new_leaf->page.page.leaf.numkeys; i < order; i++){
+        new_leaf->page.page.leaf.record[i].key = 0;
+        memset(new_leaf->page.page.leaf.record[i].value, 0, sizeof(120));
+    }
 
     //file_write
 
@@ -616,10 +633,10 @@ Node_t * insert_into_node(Node_t * root, Node_t * n,
         int left_index, Precord* precord) {
     int i;
 
-    for (i = n->page.page.internal.numkeys; i > left_index; i--) {
-        n->page.page.internal.precord[i] = n->page.page.internal.precord[i - 1];
+    for (i = n->page.page.internal.numkeys - 1; i > left_index; i--) {
+        n->page.page.internal.precord[i + 1] = n->page.page.internal.precord[i];
     }
-    n->page.page.internal.precord[left_index] = *precord;
+    n->page.page.internal.precord[left_index + 1] = *precord;
     n->page.page.internal.numkeys++;
 
     file_write_page(n->pnum, n);
@@ -693,7 +710,7 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, int 
     new_node->page.page.internal.more_pnum = temp_precord[split].pnum;
     prime_precord->pnum = new_node->pnum;
 
-    for (++i, j = 0; i < inorder; i++, j++) {
+    for (++i, j = 0; i < inorder + 1; i++, j++) {
         new_node->page.page.internal.precord[j] = temp_precord[i];
         new_node->page.page.internal.numkeys++;
     }
@@ -727,14 +744,15 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, int 
 Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, Node_t * right) {
 
     int left_index;
-    Node_t * parent;
+    Node_t * parent = (Node_t*)malloc(sizeof(Node_t));
 
     /* Case: new root. */
 
     if (right->page.page.internal.parent_pnum == 0)
-        return insert_into_new_root(left, new_precord);
+        return insert_into_new_root(left, new_precord, right);
 
-    file_read_page(left->pnum, &(parent->page));
+    parent->pnum = left->page.page.leaf.parent_pnum;
+    file_read_page(parent->pnum, &(parent->page));
 
     /* Case: leaf or node. (Remainder of
      * function body.)  
@@ -750,8 +768,12 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     /* Simple case: the new key fits into the node. 
      */
 
-    if (parent->page.page.internal.numkeys < inorder)
+    if (parent->page.page.internal.numkeys < inorder){
+        parent->page.page.internal.more_pnum = left->pnum;
+        file_write_page(left->pnum, &(left->page));
+        file_write_page(right->pnum, &(right->page));
         return insert_into_node(root, parent, left_index, new_precord);
+    }
 
     /* Harder case:  split a node in order 
      * to preserve the B+ tree properties.
@@ -765,7 +787,7 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
  * and inserts the appropriate key into
  * the new root.
  */
-Node_t * insert_into_new_root(Node_t * left, Precord* key_record) {
+Node_t * insert_into_new_root(Node_t * left, Precord* key_record, Node_t* right) {
 
     Node_t * root = make_node();
 
@@ -777,7 +799,12 @@ Node_t * insert_into_new_root(Node_t * left, Precord* key_record) {
     root->page.page.internal.precord[0] = *key_record;
     root->page.page.internal.numkeys++;
 
-    file_page_write(root->pnum, root);
+    left->page.page.leaf.parent_pnum = root->pnum;
+    right->page.page.leaf.parent_pnum = root->pnum;
+
+    file_write_page(root->pnum, &(root->page));
+    file_write_page(left->pnum, &(left->page));
+    file_write_page(right->pnum, &(right->page));
 
     return root;
 }
@@ -797,7 +824,7 @@ Node_t * start_new_tree( Record * pointer) {
 
     headerManager.header.root_pnum = root->pnum;
     headerManager.modified = true;
-    file_page_write(root->pnum, root);
+    file_write_page(root->pnum, root);
 
     return root;
 }
