@@ -10,20 +10,22 @@ void printall(pagenum_t page);
 
 int main( int argc, char ** argv ) {
     const char* path = "/mnt/d/github/ITE2038/project2/project2.db";
+
     
     open_table(path);
    
     Page_t root;
 
-   int n = 1000;
+   int n = 20;
    for(int i = 1; i <= n; i++){
        char tmp = (i % 10) + '0';
        if(i == 33){
            int j = 2;
        }
        db_insert((int64_t)i, &tmp);
-        file_read_page(headerManager.header.root_pnum, &root);
    }
+    db_delete(3);
+    file_read_page(headerManager.header.root_pnum, &root);
 
 /*
     char test[120];
@@ -31,10 +33,16 @@ int main( int argc, char ** argv ) {
     printf("%s\n", test);
 */
    printpage(headerManager.header.root_pnum);
-   printpage(1);
-   printpage(2);
-   printpage(4);
-
+   /*
+   for(int i = 1; i < 10; i++){
+       printpage(i);
+   }
+   */
+//   /*
+//   printpage(1);
+//   printpage(252);
+//   printpage(63);
+//*/
 //   printleaf(1);
 //   printall(headerManager.header.root_pnum);
 

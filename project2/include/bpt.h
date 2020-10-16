@@ -155,11 +155,11 @@ int insert( Node_t * root, int key, const char* value );
 
 // Deletion.
 
-int get_neighbor_index( Node_t * n );
+int get_parent_index( Node_t * n );
 Node_t * adjust_root(Node_t * root);
 Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int neighbor_index, int k_prime);
 node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime_index, int k_prime);
-Node_t * delete_entry( Node_t * root, Node_t * n, int key, Node_t * pointer );
+Node_t * delete_entry( Node_t * root, Node_t * n, int key );
 int delete( Node_t * root, int key );
 
 void destroy_tree_nodes(node * root);
