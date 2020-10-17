@@ -16,15 +16,23 @@ int main( int argc, char ** argv ) {
    
     Page_t root;
 
-   int n = 20;
+   int n = 8000;
    for(int i = 1; i <= n; i++){
-       char tmp = (i % 10) + '0';
-       if(i == 33){
-           int j = 2;
-       }
-       db_insert((int64_t)i, &tmp);
+       // EDITED
+       char tmp[] = { '0' + (i % 10), 0 };
+       db_insert((int64_t)i, tmp);
    }
-    db_delete(3);
+
+   printpage(headerManager.header.root_pnum);
+/*
+   printf("===========after delete=========\n");
+   for(int i = 2001; i < 49; i++){
+       db_delete(i);
+   }
+    for(int i = 1; i < 17; i++){
+       db_delete(i);
+   }
+  */ 
     file_read_page(headerManager.header.root_pnum, &root);
 
 /*
@@ -32,17 +40,20 @@ int main( int argc, char ** argv ) {
     db_find((int64_t)13, test);
     printf("%s\n", test);
 */
-   printpage(headerManager.header.root_pnum);
    /*
    for(int i = 1; i < 10; i++){
        printpage(i);
    }
    */
-//   /*
-//   printpage(1);
-//   printpage(252);
-//   printpage(63);
-//*/
+   printpage(3);
+   printpage(252);
+   /*
+   printpage(251);
+   printpage(4);
+//   printpage(5);
+   printpage(6);
+   printpage(7);
+*/
 //   printleaf(1);
 //   printall(headerManager.header.root_pnum);
 
