@@ -44,8 +44,13 @@ int db_find(int64_t key, char* ret_val) {
     if (headerManager.modified) {
         file_write_header();
     }
-    strcpy(ret_val, tmp->value);
-    return 0;
+    if(tmp == NULL){
+        return -1;
+    }
+    else{
+        strcpy(ret_val, tmp->value);
+        return 0;
+    }
 }
 
 int db_delete(int64_t key) {
@@ -59,5 +64,5 @@ int db_delete(int64_t key) {
     if (headerManager.modified) {
         file_write_header();
     }
-    return 0;
+    return result;
 }

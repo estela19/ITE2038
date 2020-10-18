@@ -885,7 +885,7 @@ int insert( Node_t * root, int key, const char* value ) {
      */
 
     if (find(root, key) != NULL)
-        return 0;
+        return -1;
 
     /* Create a new record for the
      * value.
@@ -1385,8 +1385,11 @@ int delete(Node_t * root, int key) {
     key_leaf = find_leaf(root, key);
     if (key_record != NULL && key_leaf != NULL) {
         root = delete_entry(root, key_leaf, key);
+        return 0;
     }
-    return 0;
+    else{
+        return -1;
+    }
 }
 
 
