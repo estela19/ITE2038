@@ -23,13 +23,13 @@ TARGET=main
 
 all: $(TARGET)
 
-$(SRCDIR)bpt.o:
+$(SRCDIR)bpt.o: $(SRCDIR)bpt.c
 	$(CC) $(CFLAGS) -o $(SRCDIR)bpt.o -c $(SRCDIR)bpt.c
 
-$(SRCDIR)file.o:
+$(SRCDIR)file.o: $(SRCDIR)file.c
 	$(CC) $(CFLAGS) -o $(SRCDIR)file.o -c $(SRCDIR)file.c
 
-$(SRCDIR)disk.o:
+$(SRCDIR)disk.o: $(SRCDIR)disk.c
 	$(CC) $(CFLAGS) -o $(SRCDIR)disk.o -c $(SRCDIR)disk.c
 
 $(TARGET): $(TARGET_OBJ)

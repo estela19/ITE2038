@@ -1111,8 +1111,20 @@ Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index,
         else {
             n->page.page.internal.precord[0].key = k_prime;
             n->page.page.internal.precord[0].pnum = neighbor->page.page.internal.more_pnum;
+
+            Node_t more_page;
+            more_page.pnum = neighbor->page.page.internal.more_pnum;
+            file_read_page(more_page.pnum, &(more_page.page));
+            more_page.page.page.internal.parent_pnum = n->pnum;
+            file_write_page(more_page.pnum, &(more_page.page));
+
             for (i = 0; i < neighbor->page.page.internal.numkeys; i++) {
                 n->page.page.internal.precord[i + 1] = neighbor->page.page.internal.precord[i];
+
+                more_page.pnum = neighbor->page.page.internal.precord[i].pnum;
+                file_read_page(more_page.pnum, &(more_page.page));
+                more_page.page.page.internal.parent_pnum = n->pnum;
+                file_write_page(more_page.pnum, &(more_page.page));
             }
             n->page.page.internal.numkeys = neighbor->page.page.internal.numkeys + 1;
 
@@ -1142,8 +1154,8 @@ Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index,
         }
         else {
 //            if(neighbor->pnum != 0){
-                for (i = 0, j = neighbor_insertion_index; i < neighbor->page.page.leaf.numkeys; i++, j++) {
-                    n->page.page.leaf.record[j] = neighbor->page.page.leaf.record[i];
+                for (i = 0; i < neighbor->page.page.leaf.numkeys; i++) {
+                    n->page.page.leaf.record[i] = neighbor->page.page.leaf.record[i];
                     ++n->page.page.leaf.numkeys;
                     --neighbor->page.page.leaf.numkeys;
                 }

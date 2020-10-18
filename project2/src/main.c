@@ -46,7 +46,7 @@ int main( int argc, char ** argv ) {
 */
 
    printf("===========after delete=========\n");
-   for(int i = 1; i < 6001; i++){
+   for(int i = 6000; i >=0; i--){
        db_delete(i);
    }
     printpage(0);
