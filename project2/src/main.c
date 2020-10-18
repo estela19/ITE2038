@@ -16,40 +16,60 @@ int main( int argc, char ** argv ) {
    
     Page_t root;
 
-   int n = 8000;
+   int n = 6000;
    for(int i = 1; i <= n; i++){
        // EDITED
        char tmp[] = { '0' + (i % 10), 0 };
        db_insert((int64_t)i, tmp);
    }
 
-   printpage(headerManager.header.root_pnum);
 /*
+
+    for(int i = 1; i <200; i++){
+        char ret[120];
+        db_find(i, ret);
+        if(atoi(ret) == i){
+            printf("success %d\n", i);
+        }
+        else{
+            printf("%s\n", ret);
+        }
+    }
+*/
+    
+   printpage(headerManager.header.root_pnum);
+   /*
+    printpage(3);
+    printpage(252);
+   printpage(379);
+   printpage(4);
+*/
+
    printf("===========after delete=========\n");
-   for(int i = 2001; i < 49; i++){
+   for(int i = 2001; i < 6001; i++){
        db_delete(i);
    }
-    for(int i = 1; i < 17; i++){
-       db_delete(i);
-   }
-  */ 
+    printpage(0);
+    printpage(headerManager.header.root_pnum);
+ 
     file_read_page(headerManager.header.root_pnum, &root);
 
 /*
     char test[120];
     db_find((int64_t)13, test);
     printf("%s\n", test);
-*/
-   /*
    for(int i = 1; i < 10; i++){
        printpage(i);
    }
-   */
+*/
+   
+   /*
    printpage(3);
    printpage(252);
-   /*
+//   printpage(4);
+//   printpage(5);
+   
    printpage(251);
-   printpage(4);
 //   printpage(5);
    printpage(6);
    printpage(7);
@@ -57,7 +77,6 @@ int main( int argc, char ** argv ) {
 //   printleaf(1);
 //   printall(headerManager.header.root_pnum);
 
-    printf("success\n");
 
    return 0;
 }
@@ -79,7 +98,7 @@ pagenum_t printpage(pagenum_t page){
         printf("num of keys : %d\n", tmp->page.internal.numkeys);
         printf("more page number : %u\n", tmp->page.internal.more_pnum);
         for(int i = 0; i < INTERNAL_ORDER; i++){
-            printf("%d key : %ld //", i, tmp->page.internal.precord[i].key);
+            printf("%d key : %ld || ", i, tmp->page.internal.precord[i].key);
             printf("%d pnum : %u\n", i, tmp->page.internal.precord[i].pnum);
         }        
     }
@@ -91,7 +110,7 @@ pagenum_t printpage(pagenum_t page){
         printf("num of keys : %d\n", tmp->page.leaf.numkeys);
         printf("right sibling page number : %u\n", tmp->page.leaf.rsib_pnum);
         for(int i = 0; i < DEFAULT_ORDER; i++){
-            printf("%d key : %ld   // ", i, tmp->page.leaf.record[i].key);
+            printf("%d key : %ld   || ", i, tmp->page.leaf.record[i].key);
             printf("%d value : %s\n", i, tmp->page.leaf.record[i].value);
         }        
     }

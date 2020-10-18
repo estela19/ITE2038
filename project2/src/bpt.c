@@ -399,6 +399,7 @@ int find_range( node * root, int key_start, int key_end, bool verbose,
  */
 Node_t * find_leaf( Node_t * root, int key) {
     int i = 0;
+
     if (root == NULL) {
         return root;
     }
@@ -408,16 +409,21 @@ Node_t * find_leaf( Node_t * root, int key) {
 
     while (!c->page.page.internal.isLeaf) {
         i = 0;
-        while (i < c->page.page.internal.numkeys) {
-            if (key >= c->page.page.internal.precord[i].key) i++;
-            else break;
-        }
-        i--;
-        if(i == -1){
+        if(c->page.page.internal.numkeys == 1 && c->page.page.internal.precord[0].pnum == 0){
             c->pnum = c->page.page.internal.more_pnum;
         }
         else{
-            c->pnum = c->page.page.internal.precord[i].pnum;
+            while (i < c->page.page.internal.numkeys) {
+                if (key >= c->page.page.internal.precord[i].key) i++;
+                else break;
+            }
+            i--;
+            if(i == -1){
+                c->pnum = c->page.page.internal.more_pnum;
+            }
+            else{
+                c->pnum = c->page.page.internal.precord[i].pnum;
+            }
         }
         file_read_page(c->pnum, &(c->page));
     }
@@ -433,6 +439,9 @@ Record * find( Node_t * root, int key) {
     int i = 0;
     Node_t * c = find_leaf(root, key);
     if (c == NULL) return NULL;
+    if(c->page.page.leaf.numkeys == 0){
+
+    }
     for (i = 0; i < c->page.page.leaf.numkeys; i++)
         if (c->page.page.leaf.record[i].key == key) break;
     if (i == c->page.page.leaf.numkeys) 
@@ -759,10 +768,7 @@ Node_t * insert_into_node_after_splitting(Node_t * root, Node_t * old_node, int 
      * nodes resulting from the split, with
      * the old node to the left and the new to the right.
      */
-    printf("!!!!!newnode %d\n\n", new_node->pnum);
-    for(int k = 0; k < inorder; k++){
-        printf("key %ld | pnum %u\n", new_node->page.page.internal.precord[k].key, new_node->page.page.internal.precord[k].pnum);
-    }
+
     return insert_into_parent(root, old_node, prime_precord, new_node);
 }
 
@@ -783,7 +789,6 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
 
     parent->pnum = left->page.page.leaf.parent_pnum;
     file_read_page(parent->pnum, &(parent->page));
-//    parent->page.page.internal.numkeys++;
 
     /* Case: leaf or node. (Remainder of
      * function body.)  
@@ -798,7 +803,6 @@ Node_t * insert_into_parent(Node_t * root, Node_t * left, Precord* new_precord, 
     /* Simple case: the new key fits into the node. 
      */
 
-//    printf("pagenum %ld | numkeys %ld\n", parent->pnum, parent->page.page.internal.numkeys);
     if (parent->page.page.internal.numkeys < inorder){
         file_write_page(left->pnum, &(left->page));
         file_write_page(right->pnum, &(right->page));
@@ -987,7 +991,7 @@ Node_t * remove_entry_from_node(Node_t * n, int key) {
     if (n->page.page.internal.isLeaf) {
         for (i = n->page.page.leaf.numkeys; i < order; i++) {
             n->page.page.leaf.record[i].key = 0;
-            memset(n->page.page.leaf.record[i].value, 0, sizeof(120));
+            memset(n->page.page.leaf.record[i].value, 0, 120);
         }
     }
     else {
@@ -997,6 +1001,7 @@ Node_t * remove_entry_from_node(Node_t * n, int key) {
         }
     }
     file_write_page(n->pnum, &(n->page));
+
 
     return n;
 }
@@ -1012,8 +1017,10 @@ Node_t * adjust_root(Node_t * root) {
      */
 
     if (root->page.page.internal.numkeys > 0){
-        file_write_page(root->pnum, &(root->page));
-        return root;
+        if(root->page.page.internal.precord[0].pnum != 0){
+            file_write_page(root->pnum, &(root->page));
+            return root;
+        }
     }
 
     /* Case: empty root.
@@ -1060,7 +1067,14 @@ Node_t * adjust_root(Node_t * root) {
  */
 Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index, int k_prime) {
 
+    printf("==Kprime: %d\n", k_prime);
+
+    int k;
+    if(k_prime == 5985){
+        k = 1;
+    }
     int i, neighbor_insertion_index;
+    int parent_num;
 
 
     /* Starting point in the neighbor for copying
@@ -1090,6 +1104,7 @@ Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index,
             file_write_page(neighbor->pnum, &(neighbor->page));
 
             free(n);
+            parent_num = neighbor->page.page.internal.parent_pnum;
         }
         else {
             n->page.page.internal.precord[0].key = k_prime;
@@ -1103,6 +1118,7 @@ Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index,
             file_write_page(n->pnum, &(n->page));
 
             free(neighbor);
+            parent_num = n->page.page.internal.parent_pnum;
         }
 
     }
@@ -1120,34 +1136,37 @@ Node_t * coalesce_nodes(Node_t * root, Node_t * n, Node_t * neighbor, int index,
             file_write_page(neighbor->pnum, &(neighbor->page));
 
             free(n);
+            parent_num = neighbor->page.page.internal.parent_pnum;
         }
         else {
-            for (i = 0; i < neighbor->page.page.leaf.numkeys; i++) {
-                n->page.page.leaf.record[i] = neighbor->page.page.leaf.record[i];
+            if(neighbor->pnum != 0){
+                for (i = 0; i < neighbor->page.page.leaf.numkeys; i++) {
+                    n->page.page.leaf.record[i] = neighbor->page.page.leaf.record[i];
+                }
+                n->page.page.leaf.numkeys = neighbor->page.page.leaf.numkeys;
+                n->page.page.leaf.rsib_pnum = neighbor->page.page.leaf.rsib_pnum;
+
+                file_free_page(neighbor->pnum);
+                file_write_page(n->pnum, &(n->page));
+
+                free(neighbor);
+                parent_num = n->page.page.internal.parent_pnum;
             }
-            n->page.page.leaf.numkeys = neighbor->page.page.leaf.numkeys;
-            n->page.page.leaf.rsib_pnum = neighbor->page.page.leaf.rsib_pnum;
-
-            file_free_page(neighbor->pnum);
-            file_write_page(n->pnum, &(n->page));
-
-            free(neighbor);
+            else{
+                parent_num = n->page.page.internal.parent_pnum;
+                file_free_page(n->pnum);
+            }
         }
 
     }
 
     Node_t* parent = (Node_t*)malloc(sizeof(Node_t));
-    if(neighbor != NULL){
-        parent->pnum = neighbor->page.page.internal.parent_pnum;
-    }
-    else if(n != NULL){
-        parent->pnum = n->page.page.internal.parent_pnum;
-    }
+    parent->pnum = parent_num;
     file_read_page(parent->pnum, &(parent->page));
 
     root = delete_entry(root, parent, k_prime);
 
-    free(parent);
+//    free(parent);
 
     return root;
 }
@@ -1246,19 +1265,29 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key ) {
     int k_prime_index, k_prime;
     int capacity;
 
-    // Remove key and pointer from node.
 
-    if(key == 48){
-        int k = 1;
-    };
+    if(!n->page.page.internal.isLeaf && n->page.page.internal.numkeys == 1){
+        if(n->page.page.internal.precord[0].pnum != 0){
+            if(n->pnum != root->pnum){
+               n->page.page.internal.precord[0].pnum = 0;
+                file_write_page(n->pnum, &(n->page));
+                file_free_page(n->page.page.internal.precord[0].pnum);
+                return root;
+            }
+        }
+    }
+
+    // Remove key and pointer from node.m
 
     n = remove_entry_from_node(n, key);
 
     /* Case:  deletion from the root. 
      */
 
-    if (n == root) 
+    if (n->pnum == root->pnum) {
+        memcpy(root, &(n->page), 4096);
         return adjust_root(root);
+    }
 
 
     /* Case:  deletion from a node below the root.
@@ -1298,6 +1327,7 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key ) {
     index = get_parent_index( n );
     k_prime_index = index == -1 ? 0 : index;
     k_prime = parent->page.page.internal.precord[k_prime_index].key;
+
     
     if (index == -1) {
         file_read_page(parent->page.page.internal.precord[0].pnum, &(neighbor->page));
@@ -1318,7 +1348,6 @@ Node_t * delete_entry( Node_t * root, Node_t * n, int key ) {
     if (n->page.page.leaf.numkeys <= min_keys)
         return coalesce_nodes(root, n, neighbor, index, k_prime);
 
-    free(neighbor);
     free(parent);
     /* Redistribution. */
 
