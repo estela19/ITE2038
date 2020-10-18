@@ -15,14 +15,14 @@ int main( int argc, char ** argv ) {
     open_table(path);
    
     Page_t root;
-
+/*
    int n = 6000;
    for(int i = 1; i <= n; i++){
        // EDITED
        char tmp[] = { '0' + (i % 10), 0 };
        db_insert((int64_t)i, tmp);
    }
-
+*/
 /*
 
     for(int i = 1; i <200; i++){
@@ -46,7 +46,7 @@ int main( int argc, char ** argv ) {
 */
 
    printf("===========after delete=========\n");
-   for(int i = 6000; i >=0; i--){
+   for(int i = 2000; i >=0; i--){
        db_delete(i);
    }
     printpage(0);
