@@ -91,29 +91,32 @@ void BufferManager::Buff_write(Page* p){
 }
 
 //future: not using page tmp
+//default internal page
 pagenum_t BufferManager::Alloc_page(int tid){
-    Page header;
-    Buff_read(0, tid,  &header);
+    Page header(tid, 0);
     pagenum_t& fnum = header.page->header.free_pnum;
     if (fnum == 0) {
         FileManager::make_free_page(&(*Buff_find(&header)));
     }
-    Page tmp;
-    Buff_read(fnum, tid, &tmp);
+    Page tmp(tid, fnum);
     header.page->header.free_pnum = tmp.page->free.free_pnum;
-    Buff_find(header)->is_dirty = 1;
+
+    tmp.page->internal.isLeaf = false;
+    tmp.page->internal.parent_pnum = 0;
+    tmp.page->internal.more_pnum = 0;
+    tmp.page->internal.numkeys = 0;
     return fnum;
 }
 
 void BufferManager::Free_page(Page* p){
-    Page header;
-    Buff_read(0, tid, &header);
+    Page header(tid, 0);
     auto& it = Buff_find(p);
     memset(p->page, 0, PSIZE);
-    it->frame.free.free_pnum = header.page->header.free_pnum;
-    header.page->header.free_pnum = it->pnum;
-    buff_find(header)->is_dirty = 1;
-//    Buff_write(p);
+    p->page->free.free_pnum = header.page->header.free_pnum;
+    header.page->header.free_pnum = p->pnum;
+    p->is_empty = true;
+//    buff_find(header)->is_dirty = 1;
+    Buff_write(p);
 }
 
 auto& BufferManager::Buff_find(Page* p){
@@ -138,18 +141,27 @@ auto& BuffManager::Buff_find(int tid, pagenum_t pnum){
 
 void BufferManager::Buff_make(int tid, pagenum_t num){
     //futere: & optimization
+    Buffer& tmp = *BufferManager.emplace_back();
+    tmp.pnum = num;
+    tmp.table_id = tid;
+    //Todo: change &type
+    file_read_page(&tmp.frame, tid, num);
+    //Todo: add to hash table
+
+    /*
     Buffer tmp;
     tmp.pnum = num;
     tmp.table_id = tid;
     file_read_page(&tmp.frame, tid, num);
-    //Todo: add to hash table
     buffManager.push_back(tmp);
+    */
 }
 
 void BufferManager::setPage(Page* p, auto& it){
     p->page = it->frame;
     p->pnum = it->pnum;
     p->table_id = it->table_id;
+    p->is_empty = false;
     //
     it->pincnt++;
 }

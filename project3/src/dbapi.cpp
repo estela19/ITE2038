@@ -39,11 +39,10 @@ static int DBManager::open_table(char* pathname) {
 }
 
 static int DBManager::db_insert(int table_id, int64_t key, char* value) {
-    Node_t* root = NULL;
+    Node_t root;
     if(headerManager.header.root_pnum != 0){
-        root = (Node_t*)malloc(sizeof(Node_t));
-        file_read_page(headerManager.header.root_pnum, &(root->page));
-        root->pnum = headerManager.header.root_pnum;
+        file_read_page(headerManager.header.root_pnum, &(root.page));
+        root.pnum = headerManager.header.root_pnum;
     }
     int result = insert(root, key, value);
     if (headerManager.modified) {
@@ -53,7 +52,7 @@ static int DBManager::db_insert(int table_id, int64_t key, char* value) {
 }
 
 static int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
-    Node_t* root = NULL;
+    Node_t root;
     if(headerManager.header.root_pnum != 0){
         root = (Node_t*)malloc(sizeof(Node_t));
         file_read_page(headerManager.header.root_pnum, &(root->page));

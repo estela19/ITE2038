@@ -16,6 +16,7 @@ public:
     Page_t* page;
     pagenum_t pnum;
     int table_id;
+    bool is_empty;
 
 private:
 
