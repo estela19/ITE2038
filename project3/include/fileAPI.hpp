@@ -1,10 +1,13 @@
 #ifndef __FILE_H__
 #define __FILE_H__
 
-#include<stdint.h>
-#include<string.h>
+#include<cstdint>
+#include<string>
 #include<map>
 #include<array>
+#include<utility>
+
+#include "types.hpp"
 
 #define NEWPAGES 4
 
@@ -15,27 +18,25 @@ private:
     std::array<int fd, 11> tid2fp;
 
 public:
-    static int open_file(char* pathname);
+    int open_file(char* pathname);
 
-    static int exist_file(char* pathname);
+    int exist_file(char* pathname);
 
-    static void match_fd(char* pathname, int fd);
+    void match_fd(char* pathname, int fd);
 
-    static int get_tableid(char* pathname);
+    int get_tableid(char* pathname);
 
-    static pagenum_t file_alloc_page(int tid);
+    pagenum_t file_alloc_page(int tid);
 
-    static void file_free_page(int tid, pagenum_t pagenum);
+    void make_free_page(Buffer* header);
 
-    static void file_read_page(Page_t* p, int tid, pagenum_t pnum);
+    void file_read_page(Page_t* p, int tid, pagenum_t pnum);
 
-    static void file_write_page(Page_t* p, int tid, pagenum_t pnum);
+    void file_write_page(Page_t* p, int tid, pagenum_t pnum);
 
-    static void file_write_header();
+    int get_file_pointer(int table_id);
 
-    static void file_read_header();
-
-    static int Get_file_pointer(int table_id);
+    int get_tablenum();
 }
 
 #endif

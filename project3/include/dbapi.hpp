@@ -3,21 +3,45 @@
 
 #include <cstdint>
 
+#include "fileAPI.hpp"
+#include "buffer.hpp"
+#include "bpt.hpp"
+#include "page.hpp"
+
 class DBManager{
+private:
+    BPT* bpt;
+    BufferManager* buff;
+    FileManager* file;
+
 public:
-    static int init_db(int num_buf);
+    static DBManager& DBManager::get();
 
-    static int open_table(char* pathname);
+    void initialize(int buff_size);
 
-    static int db_insert(int table_id, int64_t key, char* value);
+    int init_db(int num_buf);
 
-    static int db_find(int table_id, int64_t key, char* ret_val);
+    int open_table(char* pathname);
 
-    static int db_delete(int table_id, int64_t key);
+    int db_insert(int table_id, int64_t key, char* value);
 
-    static int close_table(int table_id);
+    int db_find(int table_id, int64_t key, char* ret_val);
 
-    static int shutdown_db();
+    int db_delete(int table_id, int64_t key);
+
+    int close_table(int table_id);
+
+    int shutdown_db();
+
+public:
+    BPT& getBPT();
+
+    BufferManger& getBuffmgr();
+
+    FileManager& getFilemgr()
+
+private:
+    DBManager();
 
 };
 

@@ -1,68 +1,57 @@
 #include "dbapi.hpp"
 
-#include<cstdio>
-
-class DBManager{
-public:
-    static int init_db(int num_buf);
-
-    static int open_table(char* pathname);
-
-    static int db_insert(int table_id, int64_t key, char* value);
-
-    static int db_find(int table_id, int64_t key, char* ret_val);
-
-    static int db_delete(int table_id, int64_t key);
-
-    static int close_table(int table_id);
-
-    static int shutdown_db();
-
-};
-
-static int DBManager::init_db(int num_buf){
-
+static DBManager& DBManager::get(){
+    static DBManager instance;
+    return instance;
 }
 
-static int DBManager::open_table(char* pathname) {
-    if (exist_file(pathname)) {
-        open_file(pathname);
+void DBManager::initialize(int num_buf){
+    file = new FileManager();
+    buff = new BufferManager(*file, buff_size);
+    bpt = new BPT(*buff);
+}
+
+void DBManager::Destroy(){
+    delete bpt;
+    delete buff;
+    delete file;
+}
+
+int DBManager::open_table(char* pathname) {
+    if (file->exist_file(pathname)) {
+        file->open_file(pathname);
     }
     else {
-        open_file(pathname);
-        headerManager.header.free_pnum = 0;
-        headerManager.header.root_pnum = 0;
-        headerManager.header.numpages = 1;
-        file_write_header();
+        int fd = file->open_file(pathname);
+        Page_t header;
+        header.header.root_pnum = 0;
+        header.header.free_pnum = 0;
+        header.header.numpages = 1;
+        file->file_write_page(&header, file->get_tableid(pathname), 0);
     }
-    return table_id++;
+    return file->get_tableid(pathname);
 }
 
-static int DBManager::db_insert(int table_id, int64_t key, char* value) {
-    Node_t root;
-    if(headerManager.header.root_pnum != 0){
-        file_read_page(headerManager.header.root_pnum, &(root.page));
-        root.pnum = headerManager.header.root_pnum;
+int DBManager::db_insert(int table_id, int64_t key, char* value) {
+    Page root;
+    Page header(table_id, 0);
+    if(header.page->header.root_pnum != 0){
+        buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
-    int result = insert(root, key, value);
-    if (headerManager.modified) {
-        file_write_header();
-    }
+    bpt->Settid(table_id);
+    int result = bpt->insert(root, key, value);
     return result;
 }
 
-static int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
-    Node_t root;
-    if(headerManager.header.root_pnum != 0){
-        root = (Node_t*)malloc(sizeof(Node_t));
-        file_read_page(headerManager.header.root_pnum, &(root->page));
-        root->pnum = headerManager.header.root_pnum;
+int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
+    Page root;
+    Page header(table_id, 0);
+    if(header.page->header.root_pnum != 0){
+        buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
-    Record* tmp = find(root, key);
-    if (headerManager.modified) {
-        file_write_header();
-    }
-    if(tmp == NULL){
+    bpt->settid(table_id);
+    Record* tmp; 
+    if(bpt->Find(root, tmp, key) != 0){
         return -1;
     }
     else{
@@ -71,24 +60,42 @@ static int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
     }
 }
 
-static int DBManager::db_delete(int table_id, int64_t key) {
-    Node_t* root = NULL;
-    if(headerManager.header.root_pnum != 0){
-        root = (Node_t*)malloc(sizeof(Node_t));
-        file_read_page(headerManager.header.root_pnum, &(root->page));
-        root->pnum = headerManager.header.root_pnum;
+int DBManager::db_delete(int table_id, int64_t key) {
+    Page root;
+    Page header(table_id, 0);
+    if(header.page->header.root_pnum != 0){
+        buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
-    int result = delete(root, key);
-    if (headerManager.modified) {
-        file_write_header();
-    }
+    bpt->settid(table_id);
+    int result = bpt->delete(root, key);
     return result;
 }
 
-static int DBManager::close_table(int table_id){
-
+int DBManager::close_table(int table_id){
+    Write_Buffers(table_id);
 }
 
-static int DBManager::shutdown_db(){
+int DBManager::shutdown_db(){
+    int num = file->get_tablenum();
+    for(int i = 1; i <= num; i++){
+        close_table(i);
+    }
+}
 
+DBManager::DBManager(){
+    file = nullptr;
+    buff = nullptr;
+    bpt = nullptr;
+}
+
+BPT& DBManager::getBPT(){
+    return *bpt;
+}
+
+BufferManager& DBManager::getBuffmgr(){
+    return *buff;
+}
+
+FileManager& DBManager::getFilemgr(){
+    return *file;
 }

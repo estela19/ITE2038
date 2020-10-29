@@ -1,15 +1,23 @@
-#include "bpt.h"
-#include "file.h"
-#include "disk.h"
+#include "bpt.hpp"
 
+BPT::BPT(BufferManager& buffermanager){
+    buff = buffermanager;
+}
 
+void BPT::Setid(int id){
+    tid = id;
+}
+
+int BPT::Find( Page * root, Record * rec, int key){
+    return find(root, rec, key);
+}
 
 /* Traces the path from the root to a leaf, searching
  * by key.  Displays information about the path
  * if the verbose flag is set.
  * Returns the leaf containing the given key.
  */
-int  find_leaf( Page * root, Page * c, int key) {
+int  BPT::find_leaf( Page * root, Page * c, int key) {
     int i = 0;
 
     if (root->is_empty) {
@@ -36,8 +44,8 @@ int  find_leaf( Page * root, Page * c, int key) {
                 c->pnum = c->page->internal.precord[i].pnum;
             }
         }
-        Buff_write(c);
-        Buff_read(c->pnum, tid, c);
+        buff.Buff_write(c);
+        buff.Buff_read(c->pnum, tid, c);
 //        file_read_page(c->pnum, &(c->page));
     }
 
@@ -48,7 +56,7 @@ int  find_leaf( Page * root, Page * c, int key) {
 /* Finds and returns the record to which
  * a key refers.
  */
-int find( Page * root, Record * rec, int key) {
+int BPT::find( Page * root, Record * rec, int key) {
     int i = 0;
     Page c;
     int result = find_leaf(root, &c, key);
@@ -68,7 +76,7 @@ int find( Page * root, Record * rec, int key) {
 /* Finds the appropriate place to
  * split a node that is too big into two.
  */
-int cut( int length ) {
+int BPT::cut( int length ) {
     if (length % 2 == 0)
         return length/2;
     else
@@ -80,30 +88,18 @@ int cut( int length ) {
 /* Creates a new record to hold the value
  * to which a key refers.
  */
-void make_record(Record* new_record, int key, const char* value) {
+void BPT::make_record(Record* new_record, int key, const char* value) {
     new_record->key = key;
     strcpy(new_record->value, value);
 
 }
 
 
-/* Creates a new general node, which can be adapted
- * to serve as either a leaf or an internal node.
- */
-//maybe not used
-Node_t * make_node(Node_t* new_node) {
-    new_node->page.page.internal.isLeaf = false;
-    new_node->page.page.internal.parent_pnum = 0;
-    new_node->page.page.internal.more_pnum = 0;
-    new_node->pnum = Alloc_page(tid);
-
-    return new_node;
-}
 
 /* Creates a new leaf by creating a node
  * and then adapting it appropriately.
  */
-void make_leaf(Page* leaf ) {
+void BPT::make_leaf(Page* leaf ) {
     leaf->page.page.leaf.isLeaf = true;
 }
 
@@ -112,8 +108,7 @@ void make_leaf(Page* leaf ) {
  * to find the index of the parent's pointer to 
  * the node to the left of the key to be inserted.
  */
-int get_left_index(Page * parent, Page * left) {
-
+int BPT::get_left_index(Page * parent, Page * left) {
     int left_index = 0;
     if (parent->page->internal.more_pnum == left->pnum)
         return -1;
@@ -127,7 +122,7 @@ int get_left_index(Page * parent, Page * left) {
  * key into a leaf.
  * Returns the altered leaf.
  */
-int insert_into_leaf( Page * leaf, int key, Record * pointer ) {
+int BPT::insert_into_leaf( Page * leaf, int key, Record * pointer ) {
 
     int i, insertion_point;
 
@@ -153,7 +148,7 @@ int insert_into_leaf( Page * leaf, int key, Record * pointer ) {
  * the tree's order, causing the leaf to be split
  * in half.
  */
-int insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_leaf, int key, Record * pointer) {
+int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_leaf, int key, Record * pointer) {
 
     Record* temp_record;
     int insertion_index, split, i, j;
@@ -210,8 +205,8 @@ int insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_leaf, i
     //file_write
 
     // EDITED
-    file_write_page(new_leaf->pnum, &(new_leaf->page));
-    file_write_page(leaf->pnum, &(leaf->page));
+ //   file_write_page(new_leaf->pnum, &(new_leaf->page));
+ //   file_write_page(leaf->pnum, &(leaf->page));
 
     return insert_into_parent(root, leaf, new_precord, new_leaf);
 }
@@ -221,7 +216,7 @@ int insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_leaf, i
  * into a node into which these can fit
  * without violating the B+ tree properties.
  */
-int insert_into_node(Page * root, Page * n, 
+int BPT::insert_into_node(Page * root, Page * n, 
         int left_index, Precord* precord) {
     int i;
 
@@ -241,7 +236,7 @@ int insert_into_node(Page * root, Page * n,
  * into a node, causing the node's size to exceed
  * the order, and causing the node to split into two.
  */
-int insert_into_node_after_splitting(Page * root, Page * old_node, int left_index, Precord* precord, 
+int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left_index, Precord* precord, 
         Page * right) {
 
     int i, j, split;
@@ -337,7 +332,7 @@ int insert_into_node_after_splitting(Page * root, Page * old_node, int left_inde
 /* Inserts a new node (leaf or internal node) into the B+ tree.
  * Returns the root of the tree after insertion.
  */
-int insert_into_parent(Page * root, Page * left, Precord* new_precord, Page * right) {
+int BPT::insert_into_parent(Page * root, Page * left, Precord* new_precord, Page * right) {
 
     int left_index;
 
@@ -381,9 +376,9 @@ int insert_into_parent(Page * root, Page * left, Precord* new_precord, Page * ri
  * and inserts the appropriate key into
  * the new root.
  */
-int insert_into_new_root(Page * left, Precord* key_record, Page* right) {
+int BPT::insert_into_new_root(Page * left, Precord* key_record, Page* right) {
 
-    Page root(tid, Alloc_page(tid));
+    Page root(tid, buff.Alloc_page(tid));
     Page header(tid, 0);
     header.page->header.root_pnum = root->pnum;
 
@@ -408,8 +403,8 @@ int insert_into_new_root(Page * left, Precord* key_record, Page* right) {
 /* First insertion:
  * start a new tree.
  */
-int start_new_tree( Record * pointer) {
-    Page root(tid, Alloc_page(tid));
+int BPT::start_new_tree( Record * pointer) {
+    Page root(tid, buff.Alloc_page(tid));
     make_leaf(&root);
 
     root->page.leaf.record[0] = *pointer;
@@ -429,7 +424,7 @@ int start_new_tree( Record * pointer) {
  * however necessary to maintain the B+ tree
  * properties.
  */
-int insert( Page * root, int key, const char* value ) {
+int BPT::Insert( Page * root, int key, const char* value ) {
 
     Record pointer;
     Page leaf;
@@ -474,7 +469,7 @@ int insert( Page * root, int key, const char* value ) {
     /* Case:  leaf must be split.
      */
 
-    Page new_leaf(tid, Alloc_page(tid));
+    Page new_leaf(tid, buff.Alloc_page(tid));
     make_leaf(&new_leaf);
     return insert_into_leaf_after_splitting(root, &leaf, &new_leaf, key, pointer);
     
@@ -491,7 +486,7 @@ int insert( Page * root, int key, const char* value ) {
  * is the leftmost child), returns -1 to signify
  * this special case.
  */
-int get_parent_index( Page * n ) {
+int BPT::get_parent_index( Page * n ) {
 
     int i;
     Page parent(tid, n->page->internal.parent_pnum);
@@ -512,7 +507,7 @@ int get_parent_index( Page * n ) {
 }
 
 
-void remove_entry_from_node(Page* n, int key) {
+void BPT::remove_entry_from_node(Page* n, int key) {
 
     int i, num_pointers;
 
@@ -554,7 +549,7 @@ void remove_entry_from_node(Page* n, int key) {
 }
 
 
-int adjust_root(Page * root) {
+int BPT::adjust_root(Page * root) {
 
     /* Case: nonempty root.
      * Key and pointer have already been deleted,
@@ -577,7 +572,7 @@ int adjust_root(Page * root) {
         Page new_root(tid, root->page->internal.more_pnum);
         new_root.page->leaf.parent_pnum = 0;
 
-        Free_page(root);
+        buff.Free_page(root);
 //        file_free_page(root->pnum);
         
         //change header
@@ -591,7 +586,7 @@ int adjust_root(Page * root) {
     else {
         Page header(tid, 0);
         header.page->header.root_pnum = 0;
-        Free_page(root);
+        buff.Free_page(root);
 //        file_free_page(root->pnum);
     }
 
@@ -605,7 +600,7 @@ int adjust_root(Page * root) {
  * can accept the additional entries
  * without exceeding the maximum.
  */
-int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prime) {
+int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prime) {
 
 //    printf("==Kprime: %d\n", k_prime);
 
@@ -636,9 +631,9 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
             neighbor->page->internal.precord[neighbor_insertion_index].pnum = n->page->internal.more_pnum;
             neighbor->page->internal.numkeys++;
 
-            Free_page(n);    
+            buff.Free_page(n);    
 //            file_free_page(n->pnum);
-            file_write_page(neighbor->pnum, &(neighbor->page));
+//            file_write_page(neighbor->pnum, &(neighbor->page));
 
             Page more_page(tid, n->page->internal.more_pnum);
             more_page.page->internal.parent_pnum = neighbor->pnum;
@@ -651,7 +646,7 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
 
             Page more_page(tid, neighbor->page->internal.more_pnum);
             more_page.page->internal.parent_pnum = n->pnum;
-            file_write_page(more_page.pnum, &(more_page.page));
+//            file_write_page(more_page.pnum, &(more_page.page));
 
             for (i = 0; i < neighbor->page->internal.numkeys; i++) {
                 n->page->internal.precord[i + 1] = neighbor->page->internal.precord[i];
@@ -661,7 +656,7 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
             }
             n->page->internal.numkeys = neighbor->page->internal.numkeys + 1;
 
-            Free_page(neighbor);
+            buff.Free_page(neighbor);
 //            file_free_page(neighbor->pnum);
 //            file_write_page(n->pnum, &(n->page));
 
@@ -680,7 +675,7 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
         if (index != -1) {
             neighbor->page->leaf.rsib_pnum = n->page->leaf.rsib_pnum;
             
-            Free_page(n);
+            buff.Free_page(n);
             //file_free_page(n->pnum);
             //file_write_page(neighbor->pnum, &(neighbor->page));
 
@@ -694,7 +689,7 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
             }
             n->page->leaf.rsib_pnum = neighbor->page->leaf.rsib_pnum;
 
-            Free_page(neighbor);
+            buff.Free_page(neighbor);
 //            file_write_page(n->pnum, &(n->page));
 
             parent_num = n->page->internal.parent_pnum;
@@ -709,90 +704,12 @@ int coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k_prim
 }
 
 
-/* Redistributes entries between two nodes when
- * one has become too small after deletion
- * but its neighbor is too big to append the
- * small node's entries without exceeding the
- * maximum
- */
-node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_index, 
-        int k_prime_index, int k_prime) {  
-
-    int i;
-    node * tmp;
-
-    /* Case: n has a neighbor to the left. 
-     * Pull the neighbor's last key-pointer pair over
-     * from the neighbor's right end to n's left end.
-     */
-
-    if (neighbor_index != -1) {
-        if (!n->is_leaf)
-            n->pointers[n->num_keys + 1] = n->pointers[n->num_keys];
-        for (i = n->num_keys; i > 0; i--) {
-            n->keys[i] = n->keys[i - 1];
-            n->pointers[i] = n->pointers[i - 1];
-        }
-        if (!n->is_leaf) {
-            n->pointers[0] = neighbor->pointers[neighbor->num_keys];
-            tmp = (node *)n->pointers[0];
-            tmp->parent = n;
-            neighbor->pointers[neighbor->num_keys] = NULL;
-            n->keys[0] = k_prime;
-            n->parent->keys[k_prime_index] = neighbor->keys[neighbor->num_keys - 1];
-        }
-        else {
-            n->pointers[0] = neighbor->pointers[neighbor->num_keys - 1];
-            neighbor->pointers[neighbor->num_keys - 1] = NULL;
-            n->keys[0] = neighbor->keys[neighbor->num_keys - 1];
-            n->parent->keys[k_prime_index] = n->keys[0];
-        }
-    }
-
-    /* Case: n is the leftmost child.
-     * Take a key-pointer pair from the neighbor to the right.
-     * Move the neighbor's leftmost key-pointer pair
-     * to n's rightmost position.
-     */
-
-    else {  
-        if (n->is_leaf) {
-            n->keys[n->num_keys] = neighbor->keys[0];
-            n->pointers[n->num_keys] = neighbor->pointers[0];
-            n->parent->keys[k_prime_index] = neighbor->keys[1];
-        }
-        else {
-            n->keys[n->num_keys] = k_prime;
-            n->pointers[n->num_keys + 1] = neighbor->pointers[0];
-            tmp = (node *)n->pointers[n->num_keys + 1];
-            tmp->parent = n;
-            n->parent->keys[k_prime_index] = neighbor->keys[0];
-        }
-        for (i = 0; i < neighbor->num_keys - 1; i++) {
-            neighbor->keys[i] = neighbor->keys[i + 1];
-            neighbor->pointers[i] = neighbor->pointers[i + 1];
-        }
-        if (!n->is_leaf)
-            neighbor->pointers[i] = neighbor->pointers[i + 1];
-    }
-
-    /* n now has one more key and one more pointer;
-     * the neighbor has one fewer of each.
-     */
-
-    n->num_keys++;
-    neighbor->num_keys--;
-
-    return root;
-}
-
-
 /* Deletes an entry from the B+ tree.
  * Removes the record and its key and pointer
  * from the leaf, and then makes all appropriate
  * changes to preserve the B+ tree properties.
  */
-int delete_entry( Page * root, Page * n, int key ) {
+int BPT::delete_entry( Page * root, Page * n, int key ) {
 
 
     int min_keys;
@@ -844,7 +761,7 @@ int delete_entry( Page * root, Page * n, int key ) {
      */
 
     Page parent(tid, n->page->internal.parent_pnum);
-    neighbor = (Node_t*)malloc(sizeof(Node_t));
+    Page neighbor;
 
     index = get_parent_index( n );
     k_prime_index = index == -1 ? 0 : index;
@@ -853,13 +770,13 @@ int delete_entry( Page * root, Page * n, int key ) {
     Page neighbor;
 
     if (index == -1) {
-        Buff_read(parent.page->internal.precord[0].pnum, tid, &neighbor);
+        buff.Buff_read(parent.page->internal.precord[0].pnum, tid, &neighbor);
     }
     else if(index == 0){
-        Buff_read(parent.page->internal.more_pnum, tid, &neighbor);
+        buff.Buff_read(parent.page->internal.more_pnum, tid, &neighbor);
     }
     else {
-        Buff_read(parent.page->internal.precord[index - 1].pnum, tid, &neighbor);
+        buff.Buff_read(parent.page->internal.precord[index - 1].pnum, tid, &neighbor);
     }
 
 
@@ -878,7 +795,7 @@ int delete_entry( Page * root, Page * n, int key ) {
 
 /* Master deletion function.
  */
-int delete(Page * root, int key) {
+int BPT::Delete(Page * root, int key) {
 
     Page key_leaf;
     Record * key_record;
@@ -889,25 +806,5 @@ int delete(Page * root, int key) {
     else{
         return -1;
     }
-}
-
-
-void destroy_tree_nodes(node * root) {
-    int i;
-    if (root->is_leaf)
-        for (i = 0; i < root->num_keys; i++)
-            free(root->pointers[i]);
-    else
-        for (i = 0; i < root->num_keys + 1; i++)
-            destroy_tree_nodes(root->pointers[i]);
-    free(root->pointers);
-    free(root->keys);
-    free(root);
-}
-
-
-node * destroy_tree(node * root) {
-    destroy_tree_nodes(root);
-    return NULL;
 }
 

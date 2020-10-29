@@ -1,30 +1,7 @@
 #include "buffer.hpp"
 
-class BufferManager{
-private:
-    std::list<Buffer>buffManager;
-    int size;
-    
-public:
-    BufferManager(int buff_size);
-    int Eviction();
-    void Buff_read(Page* p);
-    void Buff_write(Page* p);
-    void Buff_find(Page* p);
-
-};
-
-class Buffer{
-private:
-    Node_t frame;
-    int table_id;
-    int is_dirty;
-    int is_pinned;
-    Buffer* prev;
-    Buffer* next;
-};
-
-BufferManager::BufferManager(int buff_size){
+BufferManager::BufferManager(FileManager& filemanager, int buff_size){
+    file = filemanager;
     size = buff_size;
 }
 
@@ -46,7 +23,7 @@ int BufferManager::Eviction(){
         }
 
         if(tmp.is_dirty){
-            file_write_page(tmp.frame, tmp.table_id, tmp.pnum);
+            file.file_write_page(tmp.frame, tmp.table_id, tmp.pnum);
         }
         buffManager.erase(it);
         return 0;
@@ -69,6 +46,8 @@ void BufferManager::Buff_read(pagenum_t pnum, int tid, Page* p){
     usedbuffmove(it);
 }
 
+
+//maybe notused
 void BufferManager::Buff_read(int tid, pagenum_t pnum){
     auto& it = Buff_find(tid, pnum);
     if(it == buffManager.end()){
@@ -96,7 +75,7 @@ pagenum_t BufferManager::Alloc_page(int tid){
     Page header(tid, 0);
     pagenum_t& fnum = header.page->header.free_pnum;
     if (fnum == 0) {
-        FileManager::make_free_page(&(*Buff_find(&header)));
+        file.make_free_page(&(*Buff_find(&header)));
     }
     Page tmp(tid, fnum);
     header.page->header.free_pnum = tmp.page->free.free_pnum;
@@ -119,6 +98,15 @@ void BufferManager::Free_page(Page* p){
     Buff_write(p);
 }
 
+void BufferManager::Write_Buffers(int tid){
+    for(auto& i : buffManager){
+        if(i.table_id == tid && i.is_dirty){
+            while(i.pincnt > 0);
+            file.file_write_page(&(i.frame), tid, i.pnum);
+        }
+    }
+}
+
 auto& BufferManager::Buff_find(Page* p){
     pagenum_t pnum = p->pnum;
     int table_id = p->table_id;
@@ -130,6 +118,7 @@ auto& BufferManager::Buff_find(Page* p){
     return i;
 }
 
+//maybe not used
 auto& BuffManager::Buff_find(int tid, pagenum_t pnum){
     for(auto& i : buffManager){
         if(i.table_id == tid && i.pnum == pnum){
@@ -145,16 +134,9 @@ void BufferManager::Buff_make(int tid, pagenum_t num){
     tmp.pnum = num;
     tmp.table_id = tid;
     //Todo: change &type
-    file_read_page(&tmp.frame, tid, num);
+    file.file_read_page(&tmp.frame, tid, num);
     //Todo: add to hash table
 
-    /*
-    Buffer tmp;
-    tmp.pnum = num;
-    tmp.table_id = tid;
-    file_read_page(&tmp.frame, tid, num);
-    buffManager.push_back(tmp);
-    */
 }
 
 void BufferManager::setPage(Page* p, auto& it){
@@ -176,6 +158,6 @@ int BufferManager::isfull(){
 }
 
 void BufferManager::usedbuffmove(auto& it){
-        buffManager.push_back(*it);
-        buffManager.erase(it);
+    buffManager.push_back(*it);
+    buffManager.erase(it);
 }
