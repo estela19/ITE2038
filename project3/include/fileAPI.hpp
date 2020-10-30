@@ -8,14 +8,18 @@
 #include<utility>
 
 #include "types.hpp"
+#include "buffer.hpp"
 
 #define NEWPAGES 4
 
+class Buffer;
+
 class FileManager{
+
 private:
     int table_count = 1;
-    std::map<std::string path, int table_num> path2tid;
-    std::array<int fd, 11> tid2fp;
+    std::map<std::string, int> path2tid;
+    std::array<int, 11> tid2fp;
 
 public:
     int open_file(char* pathname);
@@ -37,6 +41,6 @@ public:
     int get_file_pointer(int table_id);
 
     int get_tablenum();
-}
+};
 
 #endif

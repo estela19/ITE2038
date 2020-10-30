@@ -1,7 +1,10 @@
 #ifndef __DB_H__
 #define __DB_H__
 
+#include <cstdint>
+
 #include "dbapi.hpp"
+
 
 int init_db(int num_buf);
 

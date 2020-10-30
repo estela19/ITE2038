@@ -1,10 +1,10 @@
 #include "bpt.hpp"
 
-BPT::BPT(BufferManager& buffermanager){
+BPT::BPT(BufferManager* buffermanager){
     buff = buffermanager;
 }
 
-void BPT::Setid(int id){
+void BPT::Settid(int id){
     tid = id;
 }
 
@@ -24,7 +24,7 @@ int  BPT::find_leaf( Page * root, Page * c, int key) {
         return -1;
     }
 
-    memcpy(c, root, sizeof(Node_t));
+    std::copy(root, root + 4096, c);
     
     while (!c->page->internal.isLeaf) {
         i = 0;
@@ -44,8 +44,8 @@ int  BPT::find_leaf( Page * root, Page * c, int key) {
                 c->pnum = c->page->internal.precord[i].pnum;
             }
         }
-        buff.Buff_write(c);
-        buff.Buff_read(c->pnum, tid, c);
+        buff->Buff_write(c);
+        buff->Buff_read(c->pnum, tid, c);
 //        file_read_page(c->pnum, &(c->page));
     }
 
@@ -62,13 +62,13 @@ int BPT::find( Page * root, Record * rec, int key) {
     int result = find_leaf(root, &c, key);
     if (result != 0) return -1;
 
-    for (i = 0; i < c->page.page.leaf.numkeys; i++)
-        if (c->page.page.leaf.record[i].key == key) break;
-    if (i == c->page.page.leaf.numkeys) {
+    for (i = 0; i < c.page->leaf.numkeys; i++)
+        if (c.page->leaf.record[i].key == key) break;
+    if (i == c.page->leaf.numkeys) {
         return -1;
     }
     else{
-        rec = &(c->page.page.leaf.record[i]);
+        rec = &(c.page->leaf.record[i]);
         return 0;
     }
 }
@@ -90,8 +90,8 @@ int BPT::cut( int length ) {
  */
 void BPT::make_record(Record* new_record, int key, const char* value) {
     new_record->key = key;
-    strcpy(new_record->value, value);
-
+    std::copy(value, value + 120, new_record->value);
+//    strcpy(new_record->value, value);
 }
 
 
@@ -100,7 +100,7 @@ void BPT::make_record(Record* new_record, int key, const char* value) {
  * and then adapting it appropriately.
  */
 void BPT::make_leaf(Page* leaf ) {
-    leaf->page.page.leaf.isLeaf = true;
+    leaf->page->leaf.isLeaf = true;
 }
 
 
@@ -155,8 +155,7 @@ int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_le
     Precord new_precord;
 
 
-    temp_record = (Record*)malloc((order + 1) * sizeof(Record));
-
+    temp_record = new Record[leaf_order + 1];
 
     insertion_index = 0;
     while (insertion_index < leaf_order && leaf->page->leaf.record[insertion_index].key < key)
@@ -178,12 +177,12 @@ int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_le
         leaf->page->leaf.numkeys++;
     }
 
-    for (i = split, j = 0; i < order + 1; i++, j++) {
+    for (i = split, j = 0; i < leaf_order + 1; i++, j++) {
         new_leaf->page->leaf.record[j] = temp_record[i];
         new_leaf->page->leaf.numkeys++;
     }
 
-    free(temp_record);
+    delete[] temp_record;
 
     new_leaf->page->leaf.rsib_pnum = leaf->page->leaf.rsib_pnum;
     leaf->page->leaf.rsib_pnum = new_leaf->pnum;
@@ -195,11 +194,13 @@ int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_le
 
     for(i = leaf->page->leaf.numkeys; i < leaf_order; i++){
         leaf->page->leaf.record[i].key = 0;
-        memset(leaf->page->leaf.record[i].value, 0, 120);
+        auto& value = leaf->page->leaf.record[i].value;
+        std::fill(value, value + 120, 0);
     }
     for(i = new_leaf->page->leaf.numkeys; i < leaf_order; i++){
         new_leaf->page->leaf.record[i].key = 0;
-        memset(new_leaf->page->leaf.record[i].value, 0, 120);
+        auto& value = new_leaf->page->leaf.record[i].value;
+        std::fill(value, value + 120, 0);
     }
 
     //file_write
@@ -208,7 +209,7 @@ int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_le
  //   file_write_page(new_leaf->pnum, &(new_leaf->page));
  //   file_write_page(leaf->pnum, &(leaf->page));
 
-    return insert_into_parent(root, leaf, new_precord, new_leaf);
+    return insert_into_parent(root, leaf, &new_precord, new_leaf);
 }
 
 
@@ -240,7 +241,6 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
         Page * right) {
 
     int i, j, split;
-    Page_t * tmp;
     int * temp_keys;
     Precord* temp_precord;
     Precord prime_precord;
@@ -254,12 +254,7 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
      * the other half to the new.
      */
 
-    temp_precord = malloc((inorder + 1) * sizeof(Precord));
-    if (temp_precord == NULL) {
-        perror("Temporary precord array for splitting nodes.");
-        exit(EXIT_FAILURE);
-    }
-
+    temp_precord = new Precord[internal_order + 1];
 
     for (i = 0, j = 0; i < old_node->page->internal.numkeys; i++, j++) {
         if (j == left_index + 1) j++;
@@ -273,7 +268,7 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
      * old and half to the new.
      */  
     split = cut(internal_order);
-    Page new_node(tid, Alloc_page(tid));
+    Page new_node(tid, buff->Alloc_page(tid));
     old_node->page->internal.numkeys = 0;
 
     for (i = 0; i < split; i++) {
@@ -281,16 +276,16 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
         old_node->page->internal.numkeys++;
     }
 
-    memcpy(prime_precord, &temp_precord[split], sizeof(Precord));
+    memcpy(&prime_precord, &temp_precord[split], sizeof(Precord));
     new_node.page->internal.more_pnum = temp_precord[split].pnum;
-    prime_precord.pnum = new_node->pnum;
+    prime_precord.pnum = new_node.pnum;
 
-    for (++i, j = 0; i < inorder + 1; i++, j++) {
+    for (++i, j = 0; i < internal_order + 1; i++, j++) {
         new_node.page->internal.precord[j] = temp_precord[i];
         new_node.page->internal.numkeys++;
     }
 
-    free(temp_precord);
+    delete[] temp_precord;
 
     new_node.page->internal.parent_pnum = old_node->page->internal.parent_pnum;
 
@@ -324,7 +319,7 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
      * the old node to the left and the new to the right.
      */
 
-    return insert_into_parent(root, old_node, prime_precord, &new_node);
+    return insert_into_parent(root, old_node, &prime_precord, &new_node);
 }
 
 
@@ -358,7 +353,7 @@ int BPT::insert_into_parent(Page * root, Page * left, Precord* new_precord, Page
     /* Simple case: the new key fits into the node. 
      */
 
-    if (parent->page->internal.numkeys < internal_order){
+    if (parent.page->internal.numkeys < internal_order){
  //       file_write_page(left->pnum, &(left->page));
  //       file_write_page(right->pnum, &(right->page));
         return insert_into_node(root, &parent, left_index, new_precord);
@@ -378,9 +373,9 @@ int BPT::insert_into_parent(Page * root, Page * left, Precord* new_precord, Page
  */
 int BPT::insert_into_new_root(Page * left, Precord* key_record, Page* right) {
 
-    Page root(tid, buff.Alloc_page(tid));
+    Page root(tid, buff->Alloc_page(tid));
     Page header(tid, 0);
-    header.page->header.root_pnum = root->pnum;
+    header.page->header.root_pnum = root.pnum;
 
 
     root.page->internal.parent_pnum = 0;
@@ -388,8 +383,8 @@ int BPT::insert_into_new_root(Page * left, Precord* key_record, Page* right) {
     root.page->internal.precord[0] = *key_record;
     root.page->internal.numkeys++;
 
-    left.page->leaf.parent_pnum = root->pnum;
-    right.page->leaf.parent_pnum = root->pnum;
+    left->page->leaf.parent_pnum = root.pnum;
+    right->page->leaf.parent_pnum = root.pnum;
 
 //    file_write_page(root->pnum, &(root->page));
 //    file_write_page(left->pnum, &(left->page));
@@ -404,14 +399,14 @@ int BPT::insert_into_new_root(Page * left, Precord* key_record, Page* right) {
  * start a new tree.
  */
 int BPT::start_new_tree( Record * pointer) {
-    Page root(tid, buff.Alloc_page(tid));
+    Page root(tid, buff->Alloc_page(tid));
     make_leaf(&root);
 
-    root->page.leaf.record[0] = *pointer;
-    root->page.leaf.numkeys++;
+    root.page->leaf.record[0] = *pointer;
+    root.page->leaf.numkeys++;
 
     Page header(tid, 0);
-    header.page->header.root_pnum = root->pnum;
+    header.page->header.root_pnum = root.pnum;
 
     return 0;
 }
@@ -461,7 +456,7 @@ int BPT::Insert( Page * root, int key, const char* value ) {
     /* Case: leaf has room for key and pointer.
      */
 
-    if (leaf.page->leaf.numkeys < order) {
+    if (leaf.page->leaf.numkeys < leaf_order) {
         return insert_into_leaf(&leaf, key, &pointer);
     }
 
@@ -469,9 +464,9 @@ int BPT::Insert( Page * root, int key, const char* value ) {
     /* Case:  leaf must be split.
      */
 
-    Page new_leaf(tid, buff.Alloc_page(tid));
+    Page new_leaf(tid, buff->Alloc_page(tid));
     make_leaf(&new_leaf);
-    return insert_into_leaf_after_splitting(root, &leaf, &new_leaf, key, pointer);
+    return insert_into_leaf_after_splitting(root, &leaf, &new_leaf, key, &pointer);
     
 }
 
@@ -535,7 +530,8 @@ void BPT::remove_entry_from_node(Page* n, int key) {
     if (n->page->internal.isLeaf) {
         for (i = n->page->leaf.numkeys; i < leaf_order; i++) {
             n->page->leaf.record[i].key = 0;
-            memset(n->page->leaf.record[i].value, 0, 120);
+            auto& value = n->page->leaf.record[i].value;
+            std::fill(value, value + 120, 0);
         }
     }
     else {
@@ -572,7 +568,7 @@ int BPT::adjust_root(Page * root) {
         Page new_root(tid, root->page->internal.more_pnum);
         new_root.page->leaf.parent_pnum = 0;
 
-        buff.Free_page(root);
+        buff->Free_page(root);
 //        file_free_page(root->pnum);
         
         //change header
@@ -586,7 +582,7 @@ int BPT::adjust_root(Page * root) {
     else {
         Page header(tid, 0);
         header.page->header.root_pnum = 0;
-        buff.Free_page(root);
+        buff->Free_page(root);
 //        file_free_page(root->pnum);
     }
 
@@ -631,7 +627,7 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
             neighbor->page->internal.precord[neighbor_insertion_index].pnum = n->page->internal.more_pnum;
             neighbor->page->internal.numkeys++;
 
-            buff.Free_page(n);    
+            buff->Free_page(n);    
 //            file_free_page(n->pnum);
 //            file_write_page(neighbor->pnum, &(neighbor->page));
 
@@ -656,7 +652,7 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
             }
             n->page->internal.numkeys = neighbor->page->internal.numkeys + 1;
 
-            buff.Free_page(neighbor);
+            buff->Free_page(neighbor);
 //            file_free_page(neighbor->pnum);
 //            file_write_page(n->pnum, &(n->page));
 
@@ -675,7 +671,7 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
         if (index != -1) {
             neighbor->page->leaf.rsib_pnum = n->page->leaf.rsib_pnum;
             
-            buff.Free_page(n);
+            buff->Free_page(n);
             //file_free_page(n->pnum);
             //file_write_page(neighbor->pnum, &(neighbor->page));
 
@@ -689,7 +685,7 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
             }
             n->page->leaf.rsib_pnum = neighbor->page->leaf.rsib_pnum;
 
-            buff.Free_page(neighbor);
+            buff->Free_page(neighbor);
 //            file_write_page(n->pnum, &(n->page));
 
             parent_num = n->page->internal.parent_pnum;
@@ -767,23 +763,22 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
     k_prime_index = index == -1 ? 0 : index;
     k_prime = parent.page->internal.precord[k_prime_index].key;
 
-    Page neighbor;
 
     if (index == -1) {
-        buff.Buff_read(parent.page->internal.precord[0].pnum, tid, &neighbor);
+        buff->Buff_read(parent.page->internal.precord[0].pnum, tid, &neighbor);
     }
     else if(index == 0){
-        buff.Buff_read(parent.page->internal.more_pnum, tid, &neighbor);
+        buff->Buff_read(parent.page->internal.more_pnum, tid, &neighbor);
     }
     else {
-        buff.Buff_read(parent.page->internal.precord[index - 1].pnum, tid, &neighbor);
+        buff->Buff_read(parent.page->internal.precord[index - 1].pnum, tid, &neighbor);
     }
 
 
     /* Coalescence. */
     //Merge
     if (n->page->leaf.numkeys <= min_keys)
-        return coalesce_nodes(root, n, neighbor, index, k_prime);
+        return coalesce_nodes(root, n, &neighbor, index, k_prime);
 
     /* Redistribution. */
 
@@ -801,7 +796,7 @@ int BPT::Delete(Page * root, int key) {
     Record * key_record;
 
     if (!find(root, key_record, key) && !find_leaf(root, &key_leaf, key)){
-        return delete_entry(root, key_leaf, key);
+        return delete_entry(root, &key_leaf, key);
     }
     else{
         return -1;

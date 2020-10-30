@@ -7,6 +7,7 @@
 #include "buffer.hpp"
 #include "bpt.hpp"
 #include "page.hpp"
+#include "types.hpp"
 
 class DBManager{
 private:
@@ -15,11 +16,11 @@ private:
     FileManager* file;
 
 public:
-    static DBManager& DBManager::get();
+    static DBManager& get();
 
     void initialize(int buff_size);
 
-    int init_db(int num_buf);
+    void Destroy();
 
     int open_table(char* pathname);
 
@@ -36,9 +37,9 @@ public:
 public:
     BPT& getBPT();
 
-    BufferManger& getBuffmgr();
+    BufferManager& getBuffmgr();
 
-    FileManager& getFilemgr()
+    FileManager& getFilemgr();
 
 private:
     DBManager();

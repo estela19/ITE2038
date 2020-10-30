@@ -1,14 +1,14 @@
 #include "dbapi.hpp"
 
-static DBManager& DBManager::get(){
+DBManager& DBManager::get(){
     static DBManager instance;
     return instance;
 }
 
 void DBManager::initialize(int num_buf){
     file = new FileManager();
-    buff = new BufferManager(*file, buff_size);
-    bpt = new BPT(*buff);
+    buff = new BufferManager(file, num_buf);
+    bpt = new BPT(buff);
 }
 
 void DBManager::Destroy(){
@@ -39,7 +39,7 @@ int DBManager::db_insert(int table_id, int64_t key, char* value) {
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
     bpt->Settid(table_id);
-    int result = bpt->insert(root, key, value);
+    int result = bpt->Insert(&root, key, value);
     return result;
 }
 
@@ -49,13 +49,14 @@ int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
     if(header.page->header.root_pnum != 0){
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
-    bpt->settid(table_id);
+    bpt->Settid(table_id);
     Record* tmp; 
-    if(bpt->Find(root, tmp, key) != 0){
+    if(bpt->Find(&root, tmp, key) != 0){
         return -1;
     }
     else{
-        strcpy(ret_val, tmp->value);
+        std::copy(tmp->value, tmp->value + 120, ret_val);
+//        strcpy(ret_val, tmp->value);
         return 0;
     }
 }
@@ -66,13 +67,13 @@ int DBManager::db_delete(int table_id, int64_t key) {
     if(header.page->header.root_pnum != 0){
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
-    bpt->settid(table_id);
-    int result = bpt->delete(root, key);
+    bpt->Settid(table_id);
+    int result = bpt->Delete(&root, key);
     return result;
 }
 
 int DBManager::close_table(int table_id){
-    Write_Buffers(table_id);
+    buff->Write_Buffers(table_id);
 }
 
 int DBManager::shutdown_db(){

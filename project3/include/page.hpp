@@ -1,7 +1,9 @@
 #ifndef __PAGE_H__
 #define __PAGE_H__
 
-#include "buffer.hpp"
+#include "types.hpp"
+
+class BufferManager;
 
 class Page{
 public:
@@ -17,6 +19,7 @@ public:
     Page(int tid, pagenum_t pnum);
     ~Page();
 
+/*
     Page_t& getPage();
     pagenum_t getPagenum();
     int getParentnum();
@@ -33,6 +36,7 @@ public:
     void setNumkeys(int numkeys);
     void setRsibnum(pagenum_t num);
     void setMorepnum(pagenum_t num);
+    */
 };
 
 #endif

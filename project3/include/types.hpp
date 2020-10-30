@@ -2,6 +2,7 @@
 #define __TYPES_H__
 
 #include<cstdint>
+#include<stdint.h>
 
 #define PSIZE 4096
 #define HSIZE 24

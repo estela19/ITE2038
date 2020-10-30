@@ -1,25 +1,26 @@
 #include "page.hpp"
-
+#include "buffer.hpp"
 
 Page::Page(){
-    this.is_empty = true;
+    is_empty = true;
 }
 
 Page::Page(int tid, pagenum_t pnum){
-    Buff_read(pnum, tid, &this);
-    this.pnum = pnum;
-    this.tid = tid;
-    this.is_empty = false;
+    BufferManager::Buff_read(pnum, tid, this);
+    this->pnum = pnum;
+    this->table_id = tid;
+    this->is_empty = false;
 }
 
 Page::~Page(){
     if(!is_empty){
-        Buff_write(&this);
+        BufferManager::Buff_write(this);
     }
 }
 
 //maybe not used
 
+/*
 Page_t& Page::getPage(){
     return page;
 }
@@ -79,3 +80,4 @@ Record* Page::getRecord(){
 void Page::setPagenum(pagenum_t num){
 
 }
+*/

@@ -26,5 +26,5 @@ int close_table(int table_id){
 
 int shutdown_db(){
     DBManager::get().shutdown_db();
-    DBManager::Destroy();
+    DBManager::get().Destroy();
 }

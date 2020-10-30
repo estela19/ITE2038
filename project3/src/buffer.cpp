@@ -1,6 +1,6 @@
 #include "buffer.hpp"
 
-BufferManager::BufferManager(FileManager& filemanager, int buff_size){
+BufferManager::BufferManager(FileManager* filemanager, int buff_size){
     file = filemanager;
     size = buff_size;
 }
@@ -10,7 +10,7 @@ int BufferManager::Eviction(){
     if(buffManager.empty()){
         return -1;
     }
-    else if(buffManager.front().is_pinned){
+    else if(buffManager.front().pincnt){
         return -1;
     }
     else{
@@ -18,12 +18,12 @@ int BufferManager::Eviction(){
         while(it->pincnt != 0){
             it++;
             if(it == buffManager.end()){
-                it = bufferManager.begin();
+                it = buffManager.begin();
             }
         }
 
-        if(tmp.is_dirty){
-            file.file_write_page(tmp.frame, tmp.table_id, tmp.pnum);
+        if(it->is_dirty){
+            file->file_write_page(&(it->frame), it->table_id, it->pnum);
         }
         buffManager.erase(it);
         return 0;
@@ -32,7 +32,7 @@ int BufferManager::Eviction(){
 
 //page* 에 read한 결과 return
 void BufferManager::Buff_read(pagenum_t pnum, int tid, Page* p){
-    auto& it = Buff_find(p);
+    std::list<Buffer>::iterator& it = Buff_find(p);
     if(it == buffManager.end()){
         if(isfull()){
             Eviction();
@@ -46,7 +46,7 @@ void BufferManager::Buff_read(pagenum_t pnum, int tid, Page* p){
     usedbuffmove(it);
 }
 
-
+/*
 //maybe notused
 void BufferManager::Buff_read(int tid, pagenum_t pnum){
     auto& it = Buff_find(tid, pnum);
@@ -61,8 +61,9 @@ void BufferManager::Buff_read(int tid, pagenum_t pnum){
     usedbuffmove(it);
 }
 
+*/
 void BufferManager::Buff_write(Page* p){
-    auto& it = Buff_find(p);
+    std::list<Buffer>::iterator& it = Buff_find(p);
     //find 실패에 대한 예외처리
 
     it->pincnt--;
@@ -75,7 +76,7 @@ pagenum_t BufferManager::Alloc_page(int tid){
     Page header(tid, 0);
     pagenum_t& fnum = header.page->header.free_pnum;
     if (fnum == 0) {
-        file.make_free_page(&(*Buff_find(&header)));
+        file->make_free_page(&(*Buff_find(&header)));
     }
     Page tmp(tid, fnum);
     header.page->header.free_pnum = tmp.page->free.free_pnum;
@@ -88,9 +89,9 @@ pagenum_t BufferManager::Alloc_page(int tid){
 }
 
 void BufferManager::Free_page(Page* p){
-    Page header(tid, 0);
+    Page header(p->table_id, 0);
     auto& it = Buff_find(p);
-    memset(p->page, 0, PSIZE);
+    memset(&(p->page), 0, PSIZE);
     p->page->free.free_pnum = header.page->header.free_pnum;
     header.page->header.free_pnum = p->pnum;
     p->is_empty = true;
@@ -102,22 +103,24 @@ void BufferManager::Write_Buffers(int tid){
     for(auto& i : buffManager){
         if(i.table_id == tid && i.is_dirty){
             while(i.pincnt > 0);
-            file.file_write_page(&(i.frame), tid, i.pnum);
+            file->file_write_page(&(i.frame), tid, i.pnum);
         }
     }
 }
 
-auto& BufferManager::Buff_find(Page* p){
+std::list<Buffer>::iterator& BufferManager::Buff_find(Page* p){
     pagenum_t pnum = p->pnum;
     int table_id = p->table_id;
-    for(auto& i : buffManager){
-        if(i.table_id == table_id && i.pnum == pnum){
+    std::list<Buffer>::iterator i;
+    for(i = buffManager.begin(); i != buffManager.end(); i++){
+        if(i->table_id == table_id && i->pnum == pnum){
             break;
         }
     }
     return i;
 }
 
+/*
 //maybe not used
 auto& BuffManager::Buff_find(int tid, pagenum_t pnum){
     for(auto& i : buffManager){
@@ -127,20 +130,21 @@ auto& BuffManager::Buff_find(int tid, pagenum_t pnum){
     }
     return i;
 }
+*/
 
 void BufferManager::Buff_make(int tid, pagenum_t num){
     //futere: & optimization
-    Buffer& tmp = *BufferManager.emplace_back();
+    Buffer& tmp = buffManager.emplace_back();
     tmp.pnum = num;
     tmp.table_id = tid;
     //Todo: change &type
-    file.file_read_page(&tmp.frame, tid, num);
+    file->file_read_page(&tmp.frame, tid, num);
     //Todo: add to hash table
 
 }
 
-void BufferManager::setPage(Page* p, auto& it){
-    p->page = it->frame;
+void BufferManager::setPage(Page* p, std::list<Buffer>::iterator it){
+    p->page = &(it->frame);
     p->pnum = it->pnum;
     p->table_id = it->table_id;
     p->is_empty = false;
@@ -157,7 +161,7 @@ int BufferManager::isfull(){
     }
 }
 
-void BufferManager::usedbuffmove(auto& it){
+void BufferManager::usedbuffmove(std::list<Buffer>::iterator it){
     buffManager.push_back(*it);
     buffManager.erase(it);
 }

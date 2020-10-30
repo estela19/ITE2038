@@ -1,9 +1,9 @@
-//#include<unistd.h>
-//#include<sys/types.h>
-//#include<memory.h>
-//#include<string.h>
-//#include<fcntl.h>
-//#include<stdio.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<memory.h>
+#include<string.h>
+#include<fcntl.h>
+#include<stdio.h>
 
 #include "fileAPI.hpp"
 
@@ -24,7 +24,7 @@ void FileManager::match_fd(char* pathname, int fd){
 int FileManager::get_tableid(char* pathname){
     auto it = path2tid.find(pathname);
     if(it == path2tid.end()){
-        path2tid.insert(std::make_pair<std::string(pathname), table_count>);
+        path2tid.insert(std::make_pair(std::string(pathname), table_count));
         return table_count++;
     }
     else{
@@ -34,6 +34,7 @@ int FileManager::get_tableid(char* pathname){
 
 //move to buffer method
 //maybe not used
+/*
 pagenum_t FileManager::file_alloc_page() {
     pagenum_t fnum = headerManager.header.free_pnum;
     if (fnum == 0) {
@@ -57,30 +58,31 @@ pagenum_t FileManager::file_alloc_page() {
     headerManager.modified = true;
     return fnum;
 }
+*/
 
 void FileManager::make_free_page(Buffer* header){
     Page_t tmp;
     header->frame.header.free_pnum = header->frame.header.numpages;
     for(int i = 0; i < NEWPAGES; i++){
         if(i == NEWPAGES - 1){
-            fpage.free.free_pnum = 0;
+            tmp.free.free_pnum = 0;
         }
         else{
-            fpage.free.free_pnum = header->frame.header.numpages + 1;
+            tmp.free.free_pnum = header->frame.header.numpages + 1;
         }
-        file_write_page(tmp, header->table_id, header->pnum);
+        file_write_page(&tmp, header->table_id, header->pnum);
         header->frame.header.numpages++;
     }
     header->is_dirty = 1;
 }
 
 void FileManager::file_read_page(Page_t* p, int tid, pagenum_t pnum) {
-    int fd = Get_file_pointer(tid);
+    int fd = get_file_pointer(tid);
     pread(fd, p, PSIZE, PSIZE * pnum);
 }
 
 void FileManager::file_write_page(Page_t* p, int tid, pagenum_t pnum) {
-    int fd = Get_file_pointer(tid);
+    int fd = get_file_pointer(tid);
     pwrite(fd, p, PSIZE, PSIZE * pnum);
     fsync(fd);
 }
