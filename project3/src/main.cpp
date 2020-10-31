@@ -12,13 +12,13 @@ void check(int tid, int res, int i);
 int main( int argc, char ** argv ) {
     char* path = "/mnt/d/GitHub/ITE2038/project3/project3.db";
 
-    init_db(10);
+    init_db(1000);
     int tid = open_table(path);
 
    int flag;
-   int n = 50;
+   int n = 50000;
 
-///*
+/*
    for(int i = 1; i <= n; i++){
 //       printf("=====insert %d ======\n", i);
        char tmp[] = { '0' + (i % 10), 0 };
@@ -26,7 +26,7 @@ int main( int argc, char ** argv ) {
        printf("insert ");
        check(tid, result, i);
    }
-//*/
+*/
 //    printallbuff();
 /*
     for(int i = 1; i <= n; i++){
@@ -36,18 +36,19 @@ int main( int argc, char ** argv ) {
         check(tid, result, i);
     }
 */
-    printallbuff();
+//    printallbuff();
     
 
 ///*
    printf("===========after delete=========\n");
-   for(int i = 1; i <= n ; i++){
+   for(int i = 1; i < n ; i++){
         int r = db_delete(tid, i);
         printf("delete ");
         check(tid, r, i);
    }
 //*/
-   printallbuff();
+//   printallbuff();
+
    close_table(tid);
 
 

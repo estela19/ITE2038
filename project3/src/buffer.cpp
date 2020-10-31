@@ -74,6 +74,10 @@ void BufferManager::Buff_write(Page* p){
     it->pincnt--;
     it->is_dirty = 1;
 
+    int a;
+    if(it->pincnt == -1){
+        a = 1;
+    }
     DBG(it->pnum, it->pincnt);
 //    printf("BUff_write p: %d, pin: %d\n", it->pnum, it->pincnt);
 }

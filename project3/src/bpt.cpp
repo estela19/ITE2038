@@ -689,7 +689,12 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
             for (i = 0; i < neighbor->page->leaf.numkeys; i++) {
                 n->page->leaf.record[i] = neighbor->page->leaf.record[i];
                 n->page->leaf.numkeys++;
+
+                auto& rec = neighbor->page->leaf.record[i];
+                rec.key = 0;
+                memset(rec.value, 0, 120);
             }
+
             neighbor->page->leaf.numkeys = 0;
             n->page->leaf.rsib_pnum = neighbor->page->leaf.rsib_pnum;
 
