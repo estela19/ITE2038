@@ -30,7 +30,6 @@ int  BPT::find_leaf( Page * root, Page * c, int key) {
 
     
     while (!c->page->internal.isLeaf) {
-        printf("pnum: %d, pin: %d\n", c->pnum);
         i = 0;
         if(c->page->internal.numkeys == 1 && c->page->internal.precord[0].pnum == 0){
             childnum = c->page->internal.more_pnum;
@@ -73,8 +72,8 @@ int BPT::find( Page * root, Record * rec, int key) {
         return -1;
     }
     else{
-//        memcpy(rec, &c.page->leaf.record[i], sizeof(Record));
-        *rec = (c.page->leaf.record[i]);
+        memcpy(rec, &c.page->leaf.record[i], sizeof(Record));
+//        *rec = (c.page->leaf.record[i]);
         return 0;
     }
 }
@@ -437,8 +436,8 @@ int BPT::Insert( Page * root, int key, const char* value ) {
      * duplicates.
      */
 
-    Record* r;
-    if (find(root, r, key) == 0)
+    Record r;
+    if (find(root, &r, key) == 0)
         return -1;
 
     /* Create a new record for the
@@ -540,7 +539,7 @@ void BPT::remove_entry_from_node(Page* n, int key) {
         for (i = n->page->leaf.numkeys; i < leaf_order; i++) {
             n->page->leaf.record[i].key = 0;
             auto& value = n->page->leaf.record[i].value;
-            std::fill(value, value + 120, 0);
+            memset(value, 0, 120);
         }
     }
     else {
@@ -722,6 +721,10 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
     int k_prime_index, k_prime;
     int capacity;
 
+    int a;
+    if(key == 1){
+        a = 1;
+    }
     // Remove key and pointer from node.m
 
     remove_entry_from_node(n, key);
@@ -730,7 +733,7 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
      */
 
     if (n->pnum == root->pnum) {
-        memcpy(root, &(n->page), sizeof(Page));
+//        memcpy(root, &(n->page), sizeof(Page));
         return adjust_root(root);
     }
 
@@ -802,9 +805,9 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
 int BPT::Delete(Page * root, int key) {
 
     Page key_leaf;
-    Record * key_record;
+    Record key_record;
 
-    if (!find(root, key_record, key) && !find_leaf(root, &key_leaf, key)){
+    if (!find(root, &key_record, key) && !find_leaf(root, &key_leaf, key)){
         return delete_entry(root, &key_leaf, key);
     }
     else{
