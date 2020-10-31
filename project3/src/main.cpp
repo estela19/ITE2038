@@ -7,7 +7,7 @@ pagenum_t printpage(pagenum_t page);
 void printall(pagenum_t page);
 void printallbuff();
 void printbuff(std::list<Buffer>::iterator i);
-void check(int res, int i);
+void check(int tid, int res, int i);
 
 int main( int argc, char ** argv ) {
     char* path = "/mnt/d/GitHub/ITE2038/project3/project3.db";
@@ -16,35 +16,39 @@ int main( int argc, char ** argv ) {
     int tid = open_table(path);
 
    int flag;
-   int n = 5000;
+   int n = 50;
+
+///*
    for(int i = 1; i <= n; i++){
-       printf("=====insert %d ======\n", i);
+//       printf("=====insert %d ======\n", i);
        char tmp[] = { '0' + (i % 10), 0 };
-       if(i == 33){
-           flag = 1;
-       }
-       db_insert(tid, (int64_t)i, tmp);
+       int result = db_insert(tid, (int64_t)i, tmp);
+       printf("insert ");
+       check(tid, result, i);
    }
-
-    //printallbuff();
-
+//*/
+//    printallbuff();
 /*
-    for(int i = 1; i < n; i++){
+    for(int i = 1; i <= n; i++){
         char ret[120];
         int result = db_find(tid, (int64_t)i, ret);
-        check(result, i);
+        printf("find ");
+        check(tid, result, i);
     }
+*/
+    printallbuff();
+    
 
-    */
-
-
+///*
    printf("===========after delete=========\n");
-   for(int i = n; i >0; i--){
+   for(int i = 1; i <= n ; i++){
         int r = db_delete(tid, i);
-        check(r, i);
+        printf("delete ");
+        check(tid, r, i);
    }
-
+//*/
    printallbuff();
+   close_table(tid);
 
 
    return 0;
@@ -154,11 +158,11 @@ void printbuff(std::list<Buffer>::iterator i){
     printf("----------------------------\n");
 }
 
-void check(int res, int i){
+void check(int tid, int res, int i){
     if(res == 0){
-        printf("success %d\n", i);
+        printf("tid %d success %d\n", tid, i);
     }
     else{
-        printf("fail %d\n", i);
+        printf("tid %d fail %d\n", tid, i);
     }
 }

@@ -12,9 +12,6 @@ int BufferManager::Eviction(){
     if(buffManager.empty()){
         return -1;
     }
-    else if(buffManager.front().pincnt){
-        return -1;
-    }
     else{
         auto it = buffManager.begin();
         while(it->pincnt != 0){
@@ -37,8 +34,9 @@ void BufferManager::Buff_read(pagenum_t pnum, int tid, Page* p){
     std::list<Buffer>::iterator it = Buff_find(p);
     if(it == buffManager.end()){
         if(isfull()){
+            //erase
             if(pnum == 133 && tid == 1) {
-                printf("error");
+                printf(" ");
             }
             int result = Eviction();
         }
@@ -104,10 +102,6 @@ void BufferManager::Free_page(Page* p){
     Page header(p->table_id, 0);
     std::list<Buffer>::iterator it = Buff_find(p);
 //    memset(&(p->page), 0, PSIZE);
-    //initialize
-    p->page->internal.isLeaf = 0;
-    p->page->internal.more_pnum = 0;
-    p->page->internal.numkeys = 0;
  
     p->page->free.free_pnum = header.page->header.free_pnum;
     header.page->header.free_pnum = p->pnum;
@@ -117,10 +111,15 @@ void BufferManager::Free_page(Page* p){
 }
 
 void BufferManager::Write_Buffers(int tid){
-    for(auto& i : buffManager){
-        if(i.table_id == tid && i.is_dirty){
-            while(i.pincnt > 0);
-            file->file_write_page(&(i.frame), tid, i.pnum);
+    auto i = buffManager.begin();
+    while(i != buffManager.end()){
+        if(i->table_id == tid && i->is_dirty){
+            while(i->pincnt > 0);
+            file->file_write_page(&(i->frame), tid, i->pnum);
+            i = buffManager.erase(i);
+        }
+        else{
+            i++;
         }
     }
 }

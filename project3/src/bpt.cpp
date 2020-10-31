@@ -635,11 +635,11 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
             neighbor->page->internal.precord[neighbor_insertion_index].pnum = n->page->internal.more_pnum;
             neighbor->page->internal.numkeys++;
 
+            Page more_page(tid, n->page->internal.more_pnum);
             buff->Free_page(n);    
 //            file_free_page(n->pnum);
 //            file_write_page(neighbor->pnum, &(neighbor->page));
 
-            Page more_page(tid, n->page->internal.more_pnum);
             more_page.page->internal.parent_pnum = neighbor->pnum;
 
             parent_num = neighbor->page->internal.parent_pnum;
@@ -688,9 +688,9 @@ int BPT::coalesce_nodes(Page * root, Page * n, Page * neighbor, int index, int k
         else {
             for (i = 0; i < neighbor->page->leaf.numkeys; i++) {
                 n->page->leaf.record[i] = neighbor->page->leaf.record[i];
-                ++n->page->leaf.numkeys;
-                --neighbor->page->leaf.numkeys;
+                n->page->leaf.numkeys++;
             }
+            neighbor->page->leaf.numkeys = 0;
             n->page->leaf.rsib_pnum = neighbor->page->leaf.rsib_pnum;
 
             buff->Free_page(neighbor);
@@ -721,10 +721,7 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
     int k_prime_index, k_prime;
     int capacity;
 
-    int a;
-    if(key == 1){
-        a = 1;
-    }
+
     // Remove key and pointer from node.m
 
     remove_entry_from_node(n, key);
@@ -806,6 +803,12 @@ int BPT::Delete(Page * root, int key) {
 
     Page key_leaf;
     Record key_record;
+
+    int a;
+    //erase
+    if(key == 24){
+        a = 1;
+    }
 
     if (!find(root, &key_record, key) && !find_leaf(root, &key_leaf, key)){
         return delete_entry(root, &key_leaf, key);
