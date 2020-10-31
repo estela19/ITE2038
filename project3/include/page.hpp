@@ -19,6 +19,9 @@ public:
     Page(int tid, pagenum_t pnum);
     ~Page();
 
+    void SetPage(Page* c);
+    void SetPage(int tid, pagenum_t pnum);
+
 /*
     Page_t& getPage();
     pagenum_t getPagenum();

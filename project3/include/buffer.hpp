@@ -39,14 +39,15 @@ public:
     pagenum_t Alloc_page(int tid);
     void Free_page(Page* p);
     void Write_Buffers(int tid);
+    static std::list<Buffer>& getBuffmgr();
 
 private:
-    static std::list<Buffer>::iterator& Buff_find(Page* p);
+    static std::list<Buffer>::iterator Buff_find(Page* p);
 //    auto& Buff_find(int tid, pagenum_t pnum);
-    static void Buff_make(int tid, pagenum_t num);
+    static std::list<Buffer>::iterator Buff_make(int tid, pagenum_t num);
     static void setPage(Page* p, std::list<Buffer>::iterator it);
     static int isfull();
-    static void usedbuffmove(std::list<Buffer>::iterator it);
+    static std::list<Buffer>::iterator usedbuffmove(std::list<Buffer>::iterator it);
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include<memory.h>
 #include<string.h>
 #include<fcntl.h>
+#include<sys/stat.h>
 #include<stdio.h>
 
 #include "fileAPI.hpp"
@@ -14,7 +15,9 @@ int FileManager::open_file(char* pathname) {
 }
 
 int FileManager::exist_file(char* pathname) {
-    return access(pathname, F_OK) != -1;
+    struct stat buf;
+    int res = stat(pathname, &buf);
+    return res == 0;
 }
 
 void FileManager::match_fd(char* pathname, int fd){
@@ -60,20 +63,21 @@ pagenum_t FileManager::file_alloc_page() {
 }
 */
 
-void FileManager::make_free_page(Buffer* header){
+void FileManager::make_free_page(Page* header){
     Page_t tmp;
-    header->frame.header.free_pnum = header->frame.header.numpages;
+    memset(&tmp, 0, sizeof(Page_t));
+    header->page->header.free_pnum = header->page->header.numpages;
     for(int i = 0; i < NEWPAGES; i++){
         if(i == NEWPAGES - 1){
             tmp.free.free_pnum = 0;
         }
         else{
-            tmp.free.free_pnum = header->frame.header.numpages + 1;
+            tmp.free.free_pnum = header->page->header.numpages + 1;
         }
-        file_write_page(&tmp, header->table_id, header->pnum);
-        header->frame.header.numpages++;
+        file_write_page(&tmp, header->table_id, header->page->header.numpages);
+        header->page->header.numpages++;
     }
-    header->is_dirty = 1;
+ //   header->is_dirty = 1;
 }
 
 void FileManager::file_read_page(Page_t* p, int tid, pagenum_t pnum) {

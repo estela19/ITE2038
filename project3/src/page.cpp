@@ -6,16 +6,28 @@ Page::Page(){
 }
 
 Page::Page(int tid, pagenum_t pnum){
-    BufferManager::Buff_read(pnum, tid, this);
     this->pnum = pnum;
     this->table_id = tid;
     this->is_empty = false;
+    BufferManager::Buff_read(pnum, tid, this);
 }
 
 Page::~Page(){
     if(!is_empty){
         BufferManager::Buff_write(this);
     }
+}
+
+void Page::SetPage(Page* c){
+    pnum = c->pnum;
+    table_id = c->table_id;
+    BufferManager::Buff_read(pnum, table_id, this);
+}
+
+void Page::SetPage(int tid, pagenum_t pnum){
+    this->pnum = pnum;
+    this->table_id = tid;
+    BufferManager::Buff_read(pnum, tid, this);
 }
 
 //maybe not used

@@ -32,7 +32,7 @@ public:
 
     pagenum_t file_alloc_page(int tid);
 
-    void make_free_page(Buffer* header);
+    void make_free_page(Page* header);
 
     void file_read_page(Page_t* p, int tid, pagenum_t pnum);
 

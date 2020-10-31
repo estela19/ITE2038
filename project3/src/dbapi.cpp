@@ -27,7 +27,8 @@ int DBManager::open_table(char* pathname) {
         header.header.root_pnum = 0;
         header.header.free_pnum = 0;
         header.header.numpages = 1;
-        file->file_write_page(&header, file->get_tableid(pathname), 0);
+        int a = file->get_tableid(pathname);
+        file->file_write_page(&header, a, 0);
     }
     return file->get_tableid(pathname);
 }
@@ -36,6 +37,8 @@ int DBManager::db_insert(int table_id, int64_t key, char* value) {
     Page root;
     Page header(table_id, 0);
     if(header.page->header.root_pnum != 0){
+        root.pnum = header.page->header.root_pnum;
+        root.table_id = table_id;
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
     bpt->Settid(table_id);
@@ -47,16 +50,17 @@ int DBManager::db_find(int table_id, int64_t key, char* ret_val) {
     Page root;
     Page header(table_id, 0);
     if(header.page->header.root_pnum != 0){
+        root.pnum = header.page->header.root_pnum;
+        root.table_id = table_id;
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
     bpt->Settid(table_id);
-    Record* tmp; 
-    if(bpt->Find(&root, tmp, key) != 0){
+    Record tmp; 
+    if(bpt->Find(&root, &tmp, key) != 0){
         return -1;
     }
     else{
-        std::copy(tmp->value, tmp->value + 120, ret_val);
-//        strcpy(ret_val, tmp->value);
+        strncpy(ret_val, tmp.value, 120);
         return 0;
     }
 }
@@ -65,6 +69,8 @@ int DBManager::db_delete(int table_id, int64_t key) {
     Page root;
     Page header(table_id, 0);
     if(header.page->header.root_pnum != 0){
+        root.pnum = header.page->header.root_pnum;
+        root.table_id = table_id;
         buff->Buff_read(header.page->header.root_pnum, table_id, &root);
     }
     bpt->Settid(table_id);

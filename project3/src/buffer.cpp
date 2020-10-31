@@ -32,18 +32,18 @@ int BufferManager::Eviction(){
 
 //page* 에 read한 결과 return
 void BufferManager::Buff_read(pagenum_t pnum, int tid, Page* p){
-    std::list<Buffer>::iterator& it = Buff_find(p);
+    std::list<Buffer>::iterator it = Buff_find(p);
     if(it == buffManager.end()){
         if(isfull()){
             Eviction();
         }
 
-        Buff_make(tid, pnum);
+        it = Buff_make(tid, pnum);
     }
-
+    //erase
+    it = usedbuffmove(it);
     setPage(p, it);
-
-    usedbuffmove(it);
+    printf("BUff_read p: %d, pin: %d\n", it->pnum, it->pincnt);
 }
 
 /*
@@ -63,24 +63,27 @@ void BufferManager::Buff_read(int tid, pagenum_t pnum){
 
 */
 void BufferManager::Buff_write(Page* p){
-    std::list<Buffer>::iterator& it = Buff_find(p);
+    std::list<Buffer>::iterator it = Buff_find(p);
     //find 실패에 대한 예외처리
 
     it->pincnt--;
     it->is_dirty = 1;
+    printf("BUff_write p: %d, pin: %d\n", it->pnum, it->pincnt);
 }
 
 //future: not using page tmp
 //default internal page
 pagenum_t BufferManager::Alloc_page(int tid){
     Page header(tid, 0);
-    pagenum_t& fnum = header.page->header.free_pnum;
+    pagenum_t fnum = header.page->header.free_pnum;
     if (fnum == 0) {
-        file->make_free_page(&(*Buff_find(&header)));
+        file->make_free_page(&header);
     }
+    fnum = header.page->header.free_pnum;
     Page tmp(tid, fnum);
     header.page->header.free_pnum = tmp.page->free.free_pnum;
 
+    //maybe not useful 
     tmp.page->internal.isLeaf = false;
     tmp.page->internal.parent_pnum = 0;
     tmp.page->internal.more_pnum = 0;
@@ -90,7 +93,7 @@ pagenum_t BufferManager::Alloc_page(int tid){
 
 void BufferManager::Free_page(Page* p){
     Page header(p->table_id, 0);
-    auto& it = Buff_find(p);
+    std::list<Buffer>::iterator it = Buff_find(p);
     memset(&(p->page), 0, PSIZE);
     p->page->free.free_pnum = header.page->header.free_pnum;
     header.page->header.free_pnum = p->pnum;
@@ -108,7 +111,11 @@ void BufferManager::Write_Buffers(int tid){
     }
 }
 
-std::list<Buffer>::iterator& BufferManager::Buff_find(Page* p){
+std::list<Buffer>& BufferManager::getBuffmgr(){
+    return buffManager;
+}
+
+std::list<Buffer>::iterator BufferManager::Buff_find(Page* p){
     pagenum_t pnum = p->pnum;
     int table_id = p->table_id;
     std::list<Buffer>::iterator i;
@@ -132,7 +139,7 @@ auto& BuffManager::Buff_find(int tid, pagenum_t pnum){
 }
 */
 
-void BufferManager::Buff_make(int tid, pagenum_t num){
+std::list<Buffer>::iterator BufferManager::Buff_make(int tid, pagenum_t num){
     //futere: & optimization
     Buffer& tmp = buffManager.emplace_back();
     tmp.pnum = num;
@@ -140,7 +147,7 @@ void BufferManager::Buff_make(int tid, pagenum_t num){
     //Todo: change &type
     file->file_read_page(&tmp.frame, tid, num);
     //Todo: add to hash table
-
+    return --buffManager.end();
 }
 
 void BufferManager::setPage(Page* p, std::list<Buffer>::iterator it){
@@ -161,7 +168,8 @@ int BufferManager::isfull(){
     }
 }
 
-void BufferManager::usedbuffmove(std::list<Buffer>::iterator it){
+std::list<Buffer>::iterator BufferManager::usedbuffmove(std::list<Buffer>::iterator it){
     buffManager.push_back(*it);
     buffManager.erase(it);
+    return  --buffManager.end();
 }

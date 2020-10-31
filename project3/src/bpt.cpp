@@ -19,17 +19,21 @@ int BPT::Find( Page * root, Record * rec, int key){
  */
 int  BPT::find_leaf( Page * root, Page * c, int key) {
     int i = 0;
+    int childnum;
 
     if (root->is_empty) {
         return -1;
     }
 
-    std::copy(root, root + 4096, c);
+    c->SetPage(root);
+//    memcpy(c, root, sizeof(Page));
+
     
     while (!c->page->internal.isLeaf) {
+        printf("pnum: %d, pin: %d\n", c->pnum);
         i = 0;
         if(c->page->internal.numkeys == 1 && c->page->internal.precord[0].pnum == 0){
-            c->pnum = c->page->internal.more_pnum;
+            childnum = c->page->internal.more_pnum;
         }
         else{
             while (i < c->page->internal.numkeys) {
@@ -38,14 +42,15 @@ int  BPT::find_leaf( Page * root, Page * c, int key) {
             }
             i--;
             if(i == -1){
-                c->pnum = c->page->internal.more_pnum;
+                childnum = c->page->internal.more_pnum;
             }
             else{
-                c->pnum = c->page->internal.precord[i].pnum;
+                childnum = c->page->internal.precord[i].pnum;
             }
         }
         buff->Buff_write(c);
-        buff->Buff_read(c->pnum, tid, c);
+        c->SetPage(tid, childnum);
+//        buff->Buff_read(c->pnum, tid, c);
 //        file_read_page(c->pnum, &(c->page));
     }
 
@@ -68,7 +73,8 @@ int BPT::find( Page * root, Record * rec, int key) {
         return -1;
     }
     else{
-        rec = &(c.page->leaf.record[i]);
+//        memcpy(rec, &c.page->leaf.record[i], sizeof(Record));
+        *rec = (c.page->leaf.record[i]);
         return 0;
     }
 }
@@ -90,8 +96,7 @@ int BPT::cut( int length ) {
  */
 void BPT::make_record(Record* new_record, int key, const char* value) {
     new_record->key = key;
-    std::copy(value, value + 120, new_record->value);
-//    strcpy(new_record->value, value);
+    strcpy(new_record->value, value);
 }
 
 
@@ -154,6 +159,7 @@ int BPT::insert_into_leaf_after_splitting(Page * root, Page * leaf, Page* new_le
     int insertion_index, split, i, j;
     Precord new_precord;
 
+    memset(&new_precord, 0, sizeof(Precord));
 
     temp_record = new Record[leaf_order + 1];
 
@@ -253,6 +259,8 @@ int BPT::insert_into_node_after_splitting(Page * root, Page * old_node, int left
      * keys and pointers to the old node and
      * the other half to the new.
      */
+
+    memset(&prime_precord, 0, sizeof(Precord));
 
     temp_precord = new Precord[internal_order + 1];
 
@@ -422,6 +430,7 @@ int BPT::start_new_tree( Record * pointer) {
 int BPT::Insert( Page * root, int key, const char* value ) {
 
     Record pointer;
+    memset(&pointer, 0, sizeof(Record));
     Page leaf;
 
     /* The current implementation ignores
@@ -429,7 +438,7 @@ int BPT::Insert( Page * root, int key, const char* value ) {
      */
 
     Record* r;
-    if (find(root, r, key) != 0)
+    if (find(root, r, key) == 0)
         return -1;
 
     /* Create a new record for the
@@ -721,7 +730,7 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
      */
 
     if (n->pnum == root->pnum) {
-        memcpy(root, &(n->page), 4096);
+        memcpy(root, &(n->page), sizeof(Page));
         return adjust_root(root);
     }
 
@@ -765,13 +774,13 @@ int BPT::delete_entry( Page * root, Page * n, int key ) {
 
 
     if (index == -1) {
-        buff->Buff_read(parent.page->internal.precord[0].pnum, tid, &neighbor);
+        neighbor.SetPage(tid, parent.page->internal.precord[0].pnum);
     }
     else if(index == 0){
-        buff->Buff_read(parent.page->internal.more_pnum, tid, &neighbor);
+        neighbor.SetPage(tid, parent.page->internal.more_pnum);
     }
     else {
-        buff->Buff_read(parent.page->internal.precord[index - 1].pnum, tid, &neighbor);
+        neighbor.SetPage(tid, parent.page->internal.precord[index - 1].pnum);
     }
 
 

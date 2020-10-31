@@ -5,26 +5,34 @@
 
 pagenum_t printpage(pagenum_t page);
 void printall(pagenum_t page);
+void printallbuff();
+void printbuff(std::list<Buffer>::iterator i);
 
 int main( int argc, char ** argv ) {
-    char* path = "/mnt/d/github/ITE2038/project3/project3.db";
+    char* path = "/mnt/d/GitHub/ITE2038/project3/project3.db";
 
     init_db(10);
     int tid = open_table(path);
-   
 
-   int n = 10;
+    int flag;
+   int n = 33;
    for(int i = 1; i <= n; i++){
+       printf("=====insert %d ======\n", i);
        char tmp[] = { '0' + (i % 10), 0 };
+       if(i == 33){
+           flag = 1;
+       }
        db_insert(tid, (int64_t)i, tmp);
    }
 
-    char* ret;
+    printallbuff();
+/*
+    char ret[120];
    for(int i = 1; i <= n; i++){
        db_find(tid, (int64_t)i, ret);
        printf("find %s \n", ret);
    }
-
+*/
 /*
 
     for(int i = 1; i <200; i++){
@@ -116,3 +124,51 @@ void printleaf(pagenum_t start){
     }
 }
 */
+
+void printallbuff(){
+    std::list<Buffer> tmp = BufferManager::getBuffmgr();
+    for(auto i = tmp.begin(); i != tmp.end(); i++){
+        printbuff(i);
+    }
+}
+
+void printbuff(std::list<Buffer>::iterator i){
+    printf("buff-------------------------\n");
+    printf("page %d table %d \n", i->pnum, i->table_id);
+    printf("dirty %d pin %d\n", i->is_dirty, i->pincnt);
+    pagenum_t& page = i->pnum;
+    Page_t& tmp = i->frame;
+
+    if(page == 0){
+        printf("header page\n");
+        printf("free page num : %u\n", tmp.header.free_pnum);
+        printf("root page num : %u\n", tmp.header.root_pnum);
+        printf("num of page : %u\n", tmp.header.numpages);
+    }
+
+    else if(tmp.internal.isLeaf == 0){
+        printf("internal page %u\n", page);
+        printf("parent page num : %u\n", tmp.internal.parent_pnum);
+        printf("is_leaf : %d\n", tmp.internal.isLeaf);
+        printf("num of keys : %d\n", tmp.internal.numkeys);
+        printf("more page number : %u\n", tmp.internal.more_pnum);
+        for(int i = 0; i < 248; i++){
+            printf("%d key : %ld || ", i, tmp.internal.precord[i].key);
+            printf("%d pnum : %u\n", i, tmp.internal.precord[i].pnum);
+        }        
+    }
+
+    else if(tmp.internal.isLeaf == 1){
+        printf("leaf page %u\n", page);
+        printf("parent page num : %u\n", tmp.leaf.parent_pnum);
+        printf("is_leaf : %d\n", tmp.leaf.isLeaf);
+        printf("num of keys : %d\n", tmp.leaf.numkeys);
+        printf("right sibling page number : %u\n", tmp.leaf.rsib_pnum);
+        for(int i = 0; i < 32; i++){
+            printf("%d key : %ld   || ", i, tmp.leaf.record[i].key);
+            printf("%d value : %s\n", i, tmp.leaf.record[i].value);
+        }        
+    }
+
+    printf("----------------------------\n");
+}
