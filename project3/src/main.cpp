@@ -10,46 +10,66 @@ void printbuff(std::list<Buffer>::iterator i);
 void check(int tid, int res, int i);
 
 int main( int argc, char ** argv ) {
-    char* path = "/mnt/d/GitHub/ITE2038/project3/project3.db";
+    char* path1 = "/mnt/d/GitHub/ITE2038/project3/project3(1).db";
+    char* path2 = "/mnt/d/GitHub/ITE2038/project3/project3(2).db";
 
-    init_db(1000);
-    int tid = open_table(path);
+    init_db(10);
+    int tid1 = open_table(path1);
+    int tid2 = open_table(path2);
 
-   int flag;
-   int n = 50000;
+   int n = 100;
 
-/*
+
+///*
    for(int i = 1; i <= n; i++){
-//       printf("=====insert %d ======\n", i);
        char tmp[] = { '0' + (i % 10), 0 };
-       int result = db_insert(tid, (int64_t)i, tmp);
+       int result = db_insert(tid1, (int64_t)i, tmp);
        printf("insert ");
-       check(tid, result, i);
+       check(tid1, result, i);
+   }
+//*/
+/*
+   for(int i = n; i <= 2*n; i++){
+       char tmp[] = { '0' + (i % 10), 0 };
+       int result = db_insert(tid2, (int64_t)i, tmp);
+       printf("insert ");
+       check(tid2, result, i);
    }
 */
 //    printallbuff();
+
 /*
     for(int i = 1; i <= n; i++){
         char ret[120];
-        int result = db_find(tid, (int64_t)i, ret);
+        int result = db_find(tid1, (int64_t)i, ret);
         printf("find ");
-        check(tid, result, i);
+        check(tid1, result, i);
     }
 */
+///*
+    for(int i = 1000; i <= 1000 +2*n; i++){
+        char ret[120];
+        int result = db_find(tid2, (int64_t)i, ret);
+        printf("find ");
+        check(tid2, result, i);
+    }
+//*/    
+
 //    printallbuff();
     
-
-///*
+//   close_table(tid1);
+/*
    printf("===========after delete=========\n");
-   for(int i = 1; i < n ; i++){
-        int r = db_delete(tid, i);
+   for(int i = n; i < 2*n ; i++){
+        int r = db_delete(tid2, i);
         printf("delete ");
-        check(tid, r, i);
+        check(tid2, r, i);
    }
-//*/
+*/
 //   printallbuff();
 
-   close_table(tid);
+//   close_table(tid1);
+   shutdown_db();
 
 
    return 0;

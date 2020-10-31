@@ -80,12 +80,17 @@ int DBManager::db_delete(int table_id, int64_t key) {
 
 int DBManager::close_table(int table_id){
     buff->Write_Buffers(table_id);
+    file->close_file(file->convert_tid2fp(table_id));
 }
 
 int DBManager::shutdown_db(){
-    int num = file->get_tablenum();
-    for(int i = 1; i <= num; i++){
-        close_table(i);
+    if(buff == nullptr) return -1;
+    else{
+        int num = file->get_tablenum();
+        for(int i = 1; i <= num; i++){
+            close_table(i);
+        }
+        return 0;
     }
 }
 

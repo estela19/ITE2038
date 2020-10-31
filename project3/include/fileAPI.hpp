@@ -26,9 +26,13 @@ public:
 
     int exist_file(char* pathname);
 
+    int close_file(int fd);
+
     void match_fd(char* pathname, int fd);
 
     int get_tableid(char* pathname);
+
+    int convert_tid2fp(int tid);
 
     pagenum_t file_alloc_page(int tid);
 

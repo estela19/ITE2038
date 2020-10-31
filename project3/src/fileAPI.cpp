@@ -20,6 +20,10 @@ int FileManager::exist_file(char* pathname) {
     return res == 0;
 }
 
+int FileManager::close_file(int fd){
+    close(fd);
+}
+
 void FileManager::match_fd(char* pathname, int fd){
     tid2fp[get_tableid(pathname)] = fd;
 }
@@ -35,6 +39,9 @@ int FileManager::get_tableid(char* pathname){
     }
 }
 
+int FileManager::convert_tid2fp(int tid){
+    return tid2fp[tid];
+}
 //move to buffer method
 //maybe not used
 /*
