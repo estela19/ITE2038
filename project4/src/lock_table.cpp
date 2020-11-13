@@ -4,7 +4,6 @@
 #include <list>
 #include <mutex>
 #include <condition_variable>
-#include <stdio.h>
 
 std::mutex m;
 
@@ -23,7 +22,6 @@ struct hash_t {
 	int size = 0;
 };
 
-int k = 0;
 
 struct pair_hash{
 	template <class T1, class T2>
@@ -47,7 +45,7 @@ lock_t* lock_acquire(int table_id, int64_t key)
 	std::unique_lock<std::mutex> lock(m);
 
 	auto it = lock_table.find(std::make_pair(table_id, key));
-lock_t* tmp = new lock_t;
+	lock_t* tmp = new lock_t;
 	hash_t* entry;
 
 	if(it == lock_table.end()){
@@ -80,9 +78,6 @@ lock_t* tmp = new lock_t;
 		tmp->next = nullptr;
 	}
 	entry->size++;
-	if(entry->size > 1){
-		k = 1;
-	}
 
 	tmp->cond.wait(lock, [&]{ return entry->head == tmp; });
 
